@@ -101,7 +101,7 @@ export async function updateTicket(
   const doc = await Ticket.findOneAndUpdate(
     { _id: ticketId, organizationId: orgId },
     { $set: update },
-    { new: true }
+    { returnDocument: "after" }
   ).lean();
   return serializeDoc<TicketDTO>(doc);
 }

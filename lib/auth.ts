@@ -52,7 +52,7 @@ export async function syncUserFromClerk(clerkUserId: string) {
         "User",
       imageUrl: clerkUser.imageUrl,
     },
-    { upsert: true, new: true }
+    { upsert: true, returnDocument: "after" }
   );
 
   const { orgId } = await auth();
@@ -67,7 +67,7 @@ export async function syncUserFromClerk(clerkUserId: string) {
         name: org.name,
         slug: org.slug ?? org.name.toLowerCase().replace(/\s+/g, "-"),
       },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: "after" }
     );
   }
 }

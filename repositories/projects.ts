@@ -51,7 +51,7 @@ export async function updateProject(
   const doc = await Project.findOneAndUpdate(
     { _id: projectId, organizationId: orgId },
     { $set: data },
-    { new: true }
+    { returnDocument: "after" }
   ).lean();
   return serializeDoc<ProjectDTO>(doc);
 }
@@ -64,7 +64,7 @@ export async function archiveProject(
   const doc = await Project.findOneAndUpdate(
     { _id: projectId, organizationId: orgId },
     { $set: { archived: true } },
-    { new: true }
+    { returnDocument: "after" }
   ).lean();
   return serializeDoc<ProjectDTO>(doc);
 }
@@ -84,7 +84,7 @@ export async function setProjectGithub(
         "github.webhookConfiguredAt": new Date(),
       },
     },
-    { new: true }
+    { returnDocument: "after" }
   ).lean();
   return serializeDoc<ProjectDTO>(doc);
 }
