@@ -1,20 +1,26 @@
 /** Hacker-theme Clerk styling — high contrast greens on near-black surfaces */
 export const clerkAppearance = {
+  layout: {
+    unsafe_disableDevelopmentModeWarnings: true,
+  },
   variables: {
     colorBackground: "#0a0a0a",
-    colorText: "#00ff41",
-    colorTextSecondary: "#7dff9a",
+    colorForeground: "#00ff41",
+    colorMutedForeground: "#7dff9a",
     colorNeutral: "#00cc33",
     colorPrimary: "#00ff41",
-    colorInputBackground: "#111111",
-    colorInputText: "#f5f5f5",
+    colorPrimaryForeground: "#000000",
+    colorInput: "#111111",
+    colorInputForeground: "#f5f5f5",
     colorDanger: "#ff0040",
+    colorWarning: "#ffb86c",
     borderRadius: "0.25rem",
     fontFamily: "var(--font-jetbrains-mono), ui-monospace, monospace",
   },
   elements: {
     modalBackdrop: "bg-black/80 backdrop-blur-sm",
     modalContent: "font-mono",
+    modalCloseButton: "text-primary hover:text-primary/80",
     card: "bg-black-light border border-primary/20 shadow-lg shadow-primary/10",
     headerTitle: "text-primary font-mono",
     headerSubtitle: "text-green-dark font-mono",
@@ -25,15 +31,19 @@ export const clerkAppearance = {
     socialButtonsBlockButtonText: "text-primary font-mono",
     socialButtonsProviderIcon__github: "text-white brightness-0 invert",
     formFieldLabel: "text-green-dark font-mono",
+    formFieldHintText: "text-green-dark font-mono",
     formFieldInput:
       "bg-black-light border border-primary/40 text-primary placeholder:text-green-darker focus:border-primary font-mono",
     formFieldInputShowPasswordButton: "text-green-dark hover:text-primary",
     formButtonPrimary:
       "bg-primary text-black hover:bg-primary/90 font-mono shadow-lg shadow-primary/20 [&_span]:text-black [&_svg]:text-black",
     formButtonReset: "text-green-dark hover:text-primary font-mono",
-    footer: "bg-primary border-t border-primary",
-    footerActionText: "text-black font-mono",
-    footerActionLink: "text-black font-semibold hover:text-black/80 font-mono",
+    footer: "bg-black-lighter border-t border-primary/20",
+    footerItem: "text-green-dark font-mono",
+    footerActionText: "text-green-dark font-mono",
+    footerActionLink: "text-primary font-semibold hover:text-primary/80 font-mono",
+    footerPages: "text-green-dark font-mono",
+    footerPagesLink: "text-primary hover:text-primary/80 font-mono",
     identityPreviewText: "text-primary font-mono",
     identityPreviewEditButton: "text-green-dark hover:text-primary",
     alternativeMethodsBlockButton:

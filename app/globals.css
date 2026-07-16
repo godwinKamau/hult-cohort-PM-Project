@@ -168,11 +168,26 @@
 }
 
 /* Clerk auth modals — ensure readable contrast on dark surfaces */
+:root {
+  --clerk-color-foreground: #00ff41;
+  --clerk-color-muted-foreground: #7dff9a;
+  --clerk-color-input: #111111;
+  --clerk-color-input-foreground: #f5f5f5;
+  --clerk-color-primary-foreground: #000000;
+  --clerk-color-warning: #ffb86c;
+}
+
 .cl-signIn-root,
 .cl-signUp-root,
 .cl-userProfile-root,
-.cl-organizationProfile-root {
+.cl-organizationProfile-root,
+.cl-createOrganization-root,
+[class*="createOrganization"],
+.cl-modalContent,
+.cl-card {
+  --clerk-color-muted-foreground: #7dff9a;
   --clerk-color-muted: #7dff9a;
+  --clerk-color-warning: #ffb86c;
 }
 
 .cl-signIn-root .cl-headerSubtitle,
@@ -182,14 +197,20 @@
 .cl-signIn-root .cl-formFieldLabel,
 .cl-signUp-root .cl-formFieldLabel,
 .cl-signIn-root .cl-identityPreviewText,
-.cl-signUp-root .cl-identityPreviewText {
+.cl-signUp-root .cl-identityPreviewText,
+.cl-createOrganization-root .cl-formFieldLabel,
+[class*="createOrganization"] .cl-formFieldLabel,
+.cl-createOrganization-root .cl-formFieldHintText,
+[class*="createOrganization"] .cl-formFieldHintText {
   color: #00cc33 !important;
 }
 
 .cl-signIn-root .cl-headerTitle,
 .cl-signUp-root .cl-headerTitle,
 .cl-signIn-root .cl-socialButtonsBlockButtonText,
-.cl-signUp-root .cl-socialButtonsBlockButtonText {
+.cl-signUp-root .cl-socialButtonsBlockButtonText,
+.cl-createOrganization-root .cl-headerTitle,
+[class*="createOrganization"] .cl-headerTitle {
   color: #00ff41 !important;
 }
 
@@ -198,7 +219,13 @@
 .cl-signIn-root .cl-formButtonPrimary span,
 .cl-signUp-root .cl-formButtonPrimary span,
 .cl-signIn-root .cl-formButtonPrimary svg,
-.cl-signUp-root .cl-formButtonPrimary svg {
+.cl-signUp-root .cl-formButtonPrimary svg,
+.cl-createOrganization-root .cl-formButtonPrimary,
+[class*="createOrganization"] .cl-formButtonPrimary,
+.cl-createOrganization-root .cl-formButtonPrimary span,
+[class*="createOrganization"] .cl-formButtonPrimary span,
+.cl-createOrganization-root .cl-formButtonPrimary svg,
+[class*="createOrganization"] .cl-formButtonPrimary svg {
   color: #000000 !important;
   fill: #000000 !important;
 }
@@ -242,15 +269,76 @@
 }
 
 .cl-signIn-root .cl-formFieldInput,
-.cl-signUp-root .cl-formFieldInput {
+.cl-signUp-root .cl-formFieldInput,
+.cl-createOrganization-root .cl-formFieldInput,
+[class*="createOrganization"] .cl-formFieldInput {
   color: #f5f5f5 !important;
   border-color: rgba(0, 255, 65, 0.4) !important;
   background-color: #111111 !important;
 }
 
 .cl-signIn-root .cl-formFieldInput::placeholder,
-.cl-signUp-root .cl-formFieldInput::placeholder {
+.cl-signUp-root .cl-formFieldInput::placeholder,
+.cl-createOrganization-root .cl-formFieldInput::placeholder,
+[class*="createOrganization"] .cl-formFieldInput::placeholder {
   color: #009900 !important;
+}
+
+/* Create organization modal — close button, footer, upload controls */
+.cl-createOrganization-root .cl-modalCloseButton,
+[class*="createOrganization"] .cl-modalCloseButton {
+  color: #00ff41 !important;
+}
+
+/* Clerk modals (portaled to body) — dark footer for readable secondary/dev text */
+.cl-modalContent .cl-footer,
+.cl-card .cl-footer,
+.cl-createOrganization-root .cl-footer,
+[class*="createOrganization"] .cl-footer {
+  background-color: #111111 !important;
+  border-top: 1px solid rgba(0, 255, 65, 0.2) !important;
+}
+
+.cl-modalContent .cl-footerItem,
+.cl-modalContent .cl-footerActionText,
+.cl-modalContent .cl-footerPages,
+.cl-modalContent .cl-footerPagesLink,
+.cl-modalContent .cl-footer p,
+.cl-modalContent .cl-footer span,
+.cl-card .cl-footerItem,
+.cl-card .cl-footerActionText,
+.cl-card .cl-footerPages,
+.cl-card .cl-footerPagesLink,
+.cl-card .cl-footer p,
+.cl-card .cl-footer span,
+.cl-createOrganization-root .cl-footerItem,
+[class*="createOrganization"] .cl-footerItem,
+.cl-createOrganization-root .cl-footerActionText,
+[class*="createOrganization"] .cl-footerActionText,
+.cl-createOrganization-root .cl-footerPages,
+[class*="createOrganization"] .cl-footerPages,
+.cl-createOrganization-root .cl-footerPagesLink,
+[class*="createOrganization"] .cl-footerPagesLink,
+.cl-createOrganization-root .cl-footer p,
+[class*="createOrganization"] .cl-footer p,
+.cl-createOrganization-root .cl-footer span,
+[class*="createOrganization"] .cl-footer span {
+  color: #7dff9a !important;
+}
+
+.cl-modalContent .cl-footer a,
+.cl-card .cl-footer a,
+.cl-createOrganization-root .cl-footer a,
+[class*="createOrganization"] .cl-footer a {
+  color: #00ff41 !important;
+}
+
+.cl-createOrganization-root .cl-avatarImageActionsUpload,
+[class*="createOrganization"] .cl-avatarImageActionsUpload,
+.cl-createOrganization-root .cl-avatarImageActionsUploadText,
+[class*="createOrganization"] .cl-avatarImageActionsUploadText {
+  color: #00ff41 !important;
+  border-color: rgba(0, 255, 65, 0.4) !important;
 }
 
 /* Clerk org switcher: active org preview uses variant-specific styles that ignore token inheritance */
