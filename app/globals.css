@@ -166,3 +166,24 @@
 .banner-scroll:hover {
   animation-play-state: paused;
 }
+
+/* Clerk org switcher: active org preview uses variant-specific styles that ignore token inheritance */
+[class*="organizationSwitcherPopoverMain"] [class*="organizationPreviewMainIdentifier"],
+[class*="organizationSwitcherPopoverActions"] [class*="organizationPreviewMainIdentifier"] {
+  color: #ffffff;
+}
+
+[class*="organizationSwitcherPopoverMain"] [class*="organizationPreviewSecondaryIdentifier"],
+[class*="organizationSwitcherPopoverActions"] [class*="organizationPreviewSecondaryIdentifier"] {
+  color: #d4d4d4;
+}
+
+/* Clerk user button: user preview variant ignores token inheritance */
+[class*="userButtonPopoverMain"] [class*="userPreviewMainIdentifier"],
+[class*="userButtonPopoverMain"] [class*="userPreviewMainIdentifierText"] {
+  color: #ffffff;
+}
+
+[class*="userButtonPopoverMain"] [class*="userPreviewSecondaryIdentifier"] {
+  color: #d4d4d4;
+}

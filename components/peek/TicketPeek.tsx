@@ -30,7 +30,8 @@ export function TicketPeek({
   const router = useRouter();
   const searchParams = useSearchParams();
   const ticketId = searchParams.get("ticket");
-  const ticket = tickets.find((t) => t.id === ticketId);
+  const ticket = ticketId ? tickets.find((t) => t.id === ticketId) : undefined;
+  const isOpen = Boolean(ticketId);
 
   const close = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString());
@@ -42,8 +43,8 @@ export function TicketPeek({
   }, [router, searchParams, project.id]);
 
   return (
-    <Sheet open={!!ticket} onOpenChange={(open) => !open && close()}>
-      <SheetContent side="right" className="overflow-y-auto">
+    <Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
+      <SheetContent side="right" className="overflow-y-auto text-foreground">
         {ticket ? (
           <TicketPeekContent
             key={ticket.id}
@@ -53,7 +54,14 @@ export function TicketPeek({
             members={members}
             project={project}
           />
-        ) : null}
+        ) : (
+          <div className="space-y-2 pt-8">
+            <p className="font-mono text-primary">ticket.peek()</p>
+            <p className="font-mono text-sm text-muted-foreground">
+              &gt; error: ticket_not_found
+            </p>
+          </div>
+        )}
       </SheetContent>
     </Sheet>
   );
