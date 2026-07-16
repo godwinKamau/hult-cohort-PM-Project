@@ -3,6 +3,9 @@
  * Usage: npx tsx scripts/send-test-webhook.ts [repo] [branch]
  */
 import { createHmac } from "crypto";
+import { loadEnvConfig } from "@next/env";
+
+loadEnvConfig(process.cwd());
 
 const secret = process.env.GITHUB_WEBHOOK_SECRET ?? "test-secret";
 const repo = process.argv[2] ?? "owner/pm-platform";
@@ -26,16 +29,23 @@ const signature =
   "sha256=" + createHmac("sha256", secret).update(body).digest("hex");
 const deliveryId = `test-${Date.now()}`;
 
-const res = await fetch(url, {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    "X-Hub-Signature-256": signature,
-    "X-GitHub-Event": "push",
-    "X-GitHub-Delivery": deliveryId,
-  },
-  body,
-});
+async function main() {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Hub-Signature-256": signature,
+      "X-GitHub-Event": "push",
+      "X-GitHub-Delivery": deliveryId,
+    },
+    body,
+  });
 
-console.log(`Status: ${res.status}`);
-console.log(await res.json());
+  console.log(`Status: ${res.status}`);
+  console.log(await res.json());
+}
+
+main().catch((error: unknown) => {
+  console.error("Webhook test failed:", error);
+  process.exitCode = 1;
+});
