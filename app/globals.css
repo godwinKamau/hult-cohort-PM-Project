@@ -167,6 +167,92 @@
   animation-play-state: paused;
 }
 
+/* Clerk auth modals — ensure readable contrast on dark surfaces */
+.cl-signIn-root,
+.cl-signUp-root,
+.cl-userProfile-root,
+.cl-organizationProfile-root {
+  --clerk-color-muted: #7dff9a;
+}
+
+.cl-signIn-root .cl-headerSubtitle,
+.cl-signUp-root .cl-headerSubtitle,
+.cl-signIn-root .cl-dividerText,
+.cl-signUp-root .cl-dividerText,
+.cl-signIn-root .cl-formFieldLabel,
+.cl-signUp-root .cl-formFieldLabel,
+.cl-signIn-root .cl-identityPreviewText,
+.cl-signUp-root .cl-identityPreviewText {
+  color: #00cc33 !important;
+}
+
+.cl-signIn-root .cl-headerTitle,
+.cl-signUp-root .cl-headerTitle,
+.cl-signIn-root .cl-socialButtonsBlockButtonText,
+.cl-signUp-root .cl-socialButtonsBlockButtonText {
+  color: #00ff41 !important;
+}
+
+.cl-signIn-root .cl-formButtonPrimary,
+.cl-signUp-root .cl-formButtonPrimary,
+.cl-signIn-root .cl-formButtonPrimary span,
+.cl-signUp-root .cl-formButtonPrimary span,
+.cl-signIn-root .cl-formButtonPrimary svg,
+.cl-signUp-root .cl-formButtonPrimary svg {
+  color: #000000 !important;
+  fill: #000000 !important;
+}
+
+.cl-signIn-root .cl-socialButtonsBlockButton[data-provider="github"] svg,
+.cl-signUp-root .cl-socialButtonsBlockButton[data-provider="github"] svg,
+.cl-signIn-root .cl-socialButtonsBlockButton:has([aria-label*="GitHub"]) svg,
+.cl-signUp-root .cl-socialButtonsBlockButton:has([aria-label*="GitHub"]) svg {
+  filter: brightness(0) invert(1) !important;
+}
+
+.cl-signIn-root .cl-footer,
+.cl-signUp-root .cl-footer,
+.cl-signIn-root .cl-footerActions,
+.cl-signUp-root .cl-footerActions {
+  background-color: #00ff41 !important;
+}
+
+.cl-signIn-root .cl-footerActionText,
+.cl-signUp-root .cl-footerActionText,
+.cl-signIn-root .cl-footerActionLink,
+.cl-signUp-root .cl-footerActionLink {
+  color: #000000 !important;
+}
+
+.cl-signIn-root .cl-footerActionLink:hover,
+.cl-signUp-root .cl-footerActionLink:hover {
+  color: rgba(0, 0, 0, 0.75) !important;
+}
+
+.cl-signIn-root .cl-socialButtonsBlockButton,
+.cl-signUp-root .cl-socialButtonsBlockButton {
+  border-color: rgba(0, 255, 65, 0.4) !important;
+  color: #00ff41 !important;
+  background-color: #1a1a1a !important;
+}
+
+.cl-signIn-root .cl-dividerLine,
+.cl-signUp-root .cl-dividerLine {
+  background-color: rgba(0, 255, 65, 0.3) !important;
+}
+
+.cl-signIn-root .cl-formFieldInput,
+.cl-signUp-root .cl-formFieldInput {
+  color: #f5f5f5 !important;
+  border-color: rgba(0, 255, 65, 0.4) !important;
+  background-color: #111111 !important;
+}
+
+.cl-signIn-root .cl-formFieldInput::placeholder,
+.cl-signUp-root .cl-formFieldInput::placeholder {
+  color: #009900 !important;
+}
+
 /* Clerk org switcher: active org preview uses variant-specific styles that ignore token inheritance */
 [class*="organizationSwitcherPopoverMain"] [class*="organizationPreviewMainIdentifier"],
 [class*="organizationSwitcherPopoverActions"] [class*="organizationPreviewMainIdentifier"] {
