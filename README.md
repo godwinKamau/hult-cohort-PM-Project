@@ -1,36 +1,119 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PM Platform
 
-## Getting Started
+Org-scoped project management / ticketing platform with GitHub activity banner and 👍 reactions.
 
-First, run the development server:
+## Deploy URL
+
+Set after Vercel deployment.
+
+## Stack
+
+- **Next.js 16** (App Router) + TypeScript + Tailwind v4
+- **MongoDB Atlas** + Mongoose (serverless connection caching)
+- **Clerk Organizations** (email invitations, org-scoped tenancy)
+- **Upstash Redis** (HTTP — banner queue, reaction counts)
+- **SWR polling** (~5s) for realtime-feeling banner (no WebSockets)
+
+## Setup
 
 ```bash
+cp .env.example .env.local
+# Fill in MongoDB, Clerk, Upstash, GitHub webhook secret
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Clerk setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Create a Clerk application with **Organizations** enabled
+2. Enable email invitations in Organization settings
+3. Add webhook endpoint: `https://your-domain/api/webhooks/clerk`
+   - Events: `user.created`, `user.updated`, `organization.created`, `organization.updated`
+4. Copy `CLERK_WEBHOOK_SIGNING_SECRET` to env
 
-## Learn More
+### MongoDB setup
 
-To learn more about Next.js, take a look at the following resources:
+1. Create Atlas cluster (M0 free tier OK)
+2. Allowlist `0.0.0.0/0` (serverless has no fixed IPs)
+3. Use separate databases for prod (`pm_prod`) and preview (`pm_preview`)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### GitHub webhook setup
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Per linked project repo:
 
-## Deploy on Vercel
+1. Settings → Webhooks → Add webhook
+2. Payload URL: `https://your-production-domain/api/webhooks/github`
+3. Content type: `application/json`
+4. Secret: same as `GITHUB_WEBHOOK_SECRET`
+5. Events: `push`, `Pull requests`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Local testing:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+gh webhook forward --repo owner/repo --events push,pull_request --url http://localhost:3000/api/webhooks/github
+# or
+npx tsx scripts/send-test-webhook.ts
+```
+
+## Architecture
+
+```
+┌─────────────┐     ┌──────────────┐     ┌─────────────┐
+│   Browser   │────▶│  Next.js     │────▶│  MongoDB    │
+│  (SWR 5s)   │     │  (Vercel)    │     │  (source    │
+└─────────────┘     │              │     │   of truth) │
+       │            │  Server      │     └─────────────┘
+       │            │  Actions +   │            ▲
+       │            │  API Routes  │            │
+       ▼            └──────┬───────┘            │
+┌─────────────┐            │                    │
+│   Clerk     │            ▼                    │
+│   (auth +   │     ┌─────────────┐            │
+│    orgs)    │     │  Upstash    │────────────┘
+└─────────────┘     │  Redis      │  (fallback rebuild)
+                    │  (banner +  │
+┌─────────────┐     │   reactions)│
+│   GitHub    │────▶└─────────────┘
+│  webhooks   │
+└─────────────┘
+```
+
+## Env vars
+
+| Variable | Required | Notes |
+|----------|----------|-------|
+| `MONGODB_URI` | Yes | Atlas SRV string |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Yes | Dev for preview, prod for production |
+| `CLERK_SECRET_KEY` | Yes | Match publishable key instance |
+| `CLERK_WEBHOOK_SIGNING_SECRET` | Yes | Svix secret from Clerk dashboard |
+| `UPSTASH_REDIS_REST_URL` | Yes* | *Banner/reactions degrade to Mongo-only |
+| `UPSTASH_REDIS_REST_TOKEN` | Yes* | |
+| `GITHUB_WEBHOOK_SECRET` | Yes | Shared secret for repo webhooks |
+
+## Smoke test (≤5 min)
+
+1. Sign up → create org → invite second user
+2. Create project, link GitHub repo
+3. Create tickets, assign, filter by assignee
+4. Drag ticket on Kanban board → refresh → persists
+5. Open `?ticket=` URL → side-peek works
+6. Push to linked repo → banner shows event within ~5s
+7. 👍 reaction → count updates, pusher gets inbox notification
+8. `/api/health` returns `{ ok: true }`
+
+## Known limitations (v1)
+
+- Polling only (no WebSockets/SSE)
+- Single shared GitHub webhook secret (not GitHub App)
+- Last-write-wins on ticket position conflicts
+- No email notifications or metrics dashboard
+
+## UI attribution
+
+Visual design adapted from the [Hacker-Themed Creative Portfolio (Community)](https://www.figma.com/design/ezhptI6iLki1WAtSA1bg5Q/Hacker-Themed-Creative-Portfolio--Community-) Figma community file. See [ATTRIBUTIONS.md](ATTRIBUTIONS.md).
+
+## License
+
+MIT
