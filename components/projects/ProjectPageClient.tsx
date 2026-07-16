@@ -24,6 +24,7 @@ import {
 import { KanbanBoard } from "@/components/board/KanbanBoard";
 import { TicketListView } from "@/components/board/TicketListView";
 import { TicketPeek } from "@/components/peek/TicketPeek";
+import { ProjectSettings } from "@/components/peek/ProjectSettings";
 import { createTicketAction } from "@/actions/tickets";
 import { ForbiddenState } from "@/components/states/ForbiddenState";
 
@@ -46,6 +47,7 @@ export function ProjectPageClient({
   const searchParams = useSearchParams();
   const [view, setView] = useState<"board" | "list">("board");
   const [showForm, setShowForm] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [assignee, setAssignee] = useState("");
@@ -116,11 +118,26 @@ export function ProjectPageClient({
           >
             list
           </Button>
+          <Button
+            size="sm"
+            variant={showSettings ? "default" : "outline"}
+            onClick={() => setShowSettings(!showSettings)}
+          >
+            {showSettings ? "close_settings()" : "settings()"}
+          </Button>
           <Button size="sm" onClick={() => setShowForm(!showForm)}>
             {showForm ? "cancel()" : "new_ticket()"}
           </Button>
         </div>
       </div>
+
+      {showSettings && (
+        <ProjectSettings
+          projectId={project.id}
+          repoFullName={project.github.repoFullName}
+          branch={project.github.branch}
+        />
+      )}
 
       <div className="flex flex-wrap gap-3">
         <Select

@@ -3,6 +3,17 @@ import { serializeDoc } from "@/lib/serialize";
 import type { ProjectDTO } from "@/lib/types";
 import { Project } from "@/models";
 
+function serializeProject(
+  doc: Parameters<typeof serializeDoc>[0]
+): ProjectDTO | null {
+  const project = serializeDoc<ProjectDTO>(doc);
+  if (!project) return null;
+  if (!project.github || typeof project.github !== "object") {
+    project.github = {};
+  }
+  return project;
+}
+
 export async function listProjects(
   orgId: string,
   includeArchived = false
@@ -12,7 +23,7 @@ export async function listProjects(
   if (!includeArchived) filter.archived = false;
 
   const docs = await Project.find(filter).sort({ updatedAt: -1 }).lean();
-  return docs.map((d) => serializeDoc<ProjectDTO>(d)!);
+  return docs.map((d) => serializeProject(d)!);
 }
 
 export async function getProject(
@@ -24,7 +35,7 @@ export async function getProject(
     _id: projectId,
     organizationId: orgId,
   }).lean();
-  return serializeDoc<ProjectDTO>(doc);
+  return serializeProject(doc);
 }
 
 export async function createProject(
@@ -39,7 +50,7 @@ export async function createProject(
     description: data.description ?? "",
     createdBy: userId,
   });
-  return serializeDoc<ProjectDTO>(doc.toObject())!;
+  return serializeProject(doc.toObject())!;
 }
 
 export async function updateProject(
@@ -53,7 +64,7 @@ export async function updateProject(
     { $set: data },
     { returnDocument: "after" }
   ).lean();
-  return serializeDoc<ProjectDTO>(doc);
+  return serializeProject(doc);
 }
 
 export async function archiveProject(
@@ -66,7 +77,7 @@ export async function archiveProject(
     { $set: { archived: true } },
     { returnDocument: "after" }
   ).lean();
-  return serializeDoc<ProjectDTO>(doc);
+  return serializeProject(doc);
 }
 
 export async function setProjectGithub(
@@ -86,7 +97,7 @@ export async function setProjectGithub(
     },
     { returnDocument: "after" }
   ).lean();
-  return serializeDoc<ProjectDTO>(doc);
+  return serializeProject(doc);
 }
 
 export async function findProjectByRepo(
@@ -107,7 +118,7 @@ export async function findProjectByRepo(
       "github.repoFullName": repoFullName,
       archived: false,
     }).lean();
-    return serializeDoc<ProjectDTO>(fallback);
+    return serializeProject(fallback);
   }
-  return serializeDoc<ProjectDTO>(doc);
+  return serializeProject(doc);
 }

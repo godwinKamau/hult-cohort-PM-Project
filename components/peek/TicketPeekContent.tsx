@@ -26,7 +26,6 @@ import type {
 import { updateTicketAction } from "@/actions/tickets";
 import { TagPicker } from "./TagPicker";
 import { NotesThread } from "./NotesThread";
-import { ProjectSettings } from "./ProjectSettings";
 
 interface TicketPeekContentProps {
   ticket: TicketDTO;
@@ -133,11 +132,6 @@ export function TicketPeekContent({
           members={members}
           ticketId={ticket.id}
           projectId={project.id}
-        />
-        <ProjectSettings
-          projectId={project.id}
-          repoFullName={project.github.repoFullName}
-          branch={project.github.branch}
         />
       </div>
     </>
