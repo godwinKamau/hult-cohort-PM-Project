@@ -13,16 +13,16 @@ export async function GET() {
     return NextResponse.json({ error: "Rate limited" }, { status: 429 });
   }
 
-  let items: BannerItemDTO[] = [];
+  const notifications = await notificationRepo.listRecentNotifications(orgId);
+  let items: BannerItemDTO[] = notifications.map((n) => ({
+    ...n,
+    reacted: false,
+  }));
 
   try {
-    items = await notificationRepo.getBannerFromRedis(orgId);
+    await notificationRepo.syncBannerCache(orgId, notifications);
   } catch {
-    items = [];
-  }
-
-  if (items.length === 0) {
-    items = await notificationRepo.rebuildBannerCache(orgId);
+    // Redis is a write-through cache; MongoDB remains source of truth.
   }
 
   const redis = getRedis();

@@ -24,3 +24,4 @@ export const redisKeys = {
 };
 
 export const BANNER_MAX_ITEMS = 50;
+export const BANNER_TTL_MS = 5 * 60 * 1000;

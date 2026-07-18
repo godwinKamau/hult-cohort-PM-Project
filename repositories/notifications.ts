@@ -1,5 +1,10 @@
 import { connectDB } from "@/lib/db";
-import { BANNER_MAX_ITEMS, getRedis, redisKeys } from "@/lib/redis";
+import {
+  BANNER_MAX_ITEMS,
+  BANNER_TTL_MS,
+  getRedis,
+  redisKeys,
+} from "@/lib/redis";
 import { serializeDoc } from "@/lib/serialize";
 import type { BannerItemDTO, NotificationDTO } from "@/lib/types";
 import { Notification } from "@/models";
@@ -44,6 +49,7 @@ export async function listRecentNotifications(
   const docs = await Notification.find({
     organizationId: orgId,
     type: { $in: ["push", "pull_request"] },
+    createdAt: { $gte: new Date(Date.now() - BANNER_TTL_MS) },
   })
     .sort({ createdAt: -1 })
     .limit(limit)
@@ -109,19 +115,24 @@ export async function getBannerFromRedis(
     .filter(Boolean) as BannerItemDTO[];
 }
 
+export async function syncBannerCache(
+  orgId: string,
+  notifications: NotificationDTO[]
+): Promise<void> {
+  const redis = getRedis();
+  if (!redis) return;
+
+  const key = redisKeys.banner(orgId);
+  await redis.del(key);
+  for (const n of [...notifications].reverse()) {
+    await redis.lpush(key, JSON.stringify({ ...n, reacted: false }));
+  }
+  await redis.ltrim(key, 0, BANNER_MAX_ITEMS - 1);
+}
+
 export async function rebuildBannerCache(orgId: string): Promise<BannerItemDTO[]> {
   const notifications = await listRecentNotifications(orgId);
-  const redis = getRedis();
-
-  if (redis && notifications.length > 0) {
-    const key = redisKeys.banner(orgId);
-    await redis.del(key);
-    for (const n of [...notifications].reverse()) {
-      await redis.lpush(key, JSON.stringify({ ...n, reacted: false }));
-    }
-    await redis.ltrim(key, 0, BANNER_MAX_ITEMS - 1);
-  }
-
+  await syncBannerCache(orgId, notifications);
   return notifications.map((n) => ({ ...n, reacted: false }));
 }
 

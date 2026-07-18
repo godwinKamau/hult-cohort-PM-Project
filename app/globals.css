@@ -160,11 +160,16 @@
 }
 
 .banner-scroll {
-  animation: banner-scroll 30s linear infinite;
+  animation: banner-scroll var(--banner-scroll-duration, 60s) linear infinite;
+  will-change: transform;
 }
 
 .banner-scroll:hover {
   animation-play-state: paused;
+}
+
+.banner-scroll-static {
+  will-change: auto;
 }
 
 /* Clerk auth modals — ensure readable contrast on dark surfaces */
