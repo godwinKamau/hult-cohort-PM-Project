@@ -53,12 +53,17 @@ export function NotificationBanner() {
               &gt; waiting_for_github_events…
             </span>
           ) : (
-            <div className="flex banner-scroll whitespace-nowrap">
+            <div
+              className="flex banner-scroll whitespace-nowrap"
+              aria-live="polite"
+              aria-label="Recent GitHub activity"
+            >
               {[...items, ...items].map((item, i) => (
                 <BannerItem
                   key={`${item.id}-${i}`}
                   item={item}
                   onReact={handleReact}
+                  ariaHidden={i >= items.length}
                 />
               ))}
             </div>

@@ -7,13 +7,15 @@ import { cn } from "@/lib/cn";
 interface BannerItemProps {
   item: BannerItemDTO;
   onReact: (id: string, reacted: boolean) => Promise<void>;
+  ariaHidden?: boolean;
 }
 
-export function BannerItem({ item, onReact }: BannerItemProps) {
+export function BannerItem({ item, onReact, ariaHidden = false }: BannerItemProps) {
   const icon = item.type === "push" ? "git_push" : "git_pr";
 
   return (
     <div
+      aria-hidden={ariaHidden || undefined}
       className={cn(
         "inline-flex items-center gap-3 px-4 py-1 border-r border-primary/10 shrink-0"
       )}

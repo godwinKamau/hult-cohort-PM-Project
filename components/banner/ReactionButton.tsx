@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { BannerItemDTO } from "@/lib/types";
 import { cn } from "@/lib/cn";
 
@@ -13,6 +13,17 @@ export function ReactionButton({ notification, onToggle }: ReactionButtonProps) 
   const [count, setCount] = useState(notification.likeCount);
   const [reacted, setReacted] = useState(notification.reacted);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (loading) return;
+    setCount(notification.likeCount);
+    setReacted(notification.reacted);
+  }, [
+    notification.id,
+    notification.likeCount,
+    notification.reacted,
+    loading,
+  ]);
 
   const handleClick = async (e: React.MouseEvent) => {
     e.stopPropagation();

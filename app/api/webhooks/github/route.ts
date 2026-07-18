@@ -73,6 +73,7 @@ export async function POST(req: Request) {
       branch: parsed.branch,
       actorGithubLogin: parsed.actorGithubLogin,
       commitCount: "commitCount" in parsed ? parsed.commitCount : undefined,
+      commitMessage: "commitMessage" in parsed ? parsed.commitMessage : undefined,
       prNumber: "prNumber" in parsed ? parsed.prNumber : undefined,
       prAction: "prAction" in parsed ? parsed.prAction : undefined,
       url: parsed.url,

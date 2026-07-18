@@ -83,6 +83,7 @@ export interface NotificationMetaDTO {
   branch?: string;
   actorGithubLogin?: string;
   commitCount?: number;
+  commitMessage?: string;
   prNumber?: number;
   prAction?: string;
   url?: string;

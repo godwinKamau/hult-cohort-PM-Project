@@ -6,6 +6,7 @@ const NotificationMetaSchema = new Schema(
     branch: { type: String },
     actorGithubLogin: { type: String },
     commitCount: { type: Number },
+    commitMessage: { type: String },
     prNumber: { type: Number },
     prAction: { type: String },
     url: { type: String },

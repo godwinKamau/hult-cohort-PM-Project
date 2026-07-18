@@ -30,8 +30,12 @@ export interface GithubPushPayload {
   repository: { full_name: string; html_url: string };
   pusher: { name: string; email?: string };
   sender?: { login: string };
-  commits?: { length: number }[];
-  head_commit?: { url?: string };
+  commits?: { message?: string }[];
+  head_commit?: { url?: string; message?: string };
+}
+
+function firstCommitLine(message: string): string {
+  return message.split("\n")[0]?.trim() ?? message.trim();
 }
 
 export interface GithubPRPayload {
@@ -48,13 +52,29 @@ export interface GithubPRPayload {
 
 export function parsePushPayload(payload: GithubPushPayload) {
   const branch = payload.ref.replace("refs/heads/", "");
+  const commitCount = payload.commits?.length ?? 0;
+  const rawMessage =
+    payload.head_commit?.message ??
+    payload.commits?.at(-1)?.message ??
+    payload.commits?.[0]?.message;
+  const commitMessage = rawMessage
+    ? firstCommitLine(rawMessage)
+    : undefined;
+
+  const title = commitMessage
+    ? commitCount <= 1
+      ? `push to ${branch}: "${commitMessage}"`
+      : `push to ${branch} (${commitCount} commits): "${commitMessage}"`
+    : `push to ${branch} (${commitCount} commits)`;
+
   return {
     repoFullName: payload.repository.full_name,
     branch,
     actorGithubLogin: payload.sender?.login ?? payload.pusher.name,
-    commitCount: payload.commits?.length ?? 0,
+    commitCount,
+    commitMessage,
     url: payload.head_commit?.url ?? payload.repository.html_url,
-    title: `push to ${branch} (${payload.commits?.length ?? 0} commits)`,
+    title,
   };
 }
 

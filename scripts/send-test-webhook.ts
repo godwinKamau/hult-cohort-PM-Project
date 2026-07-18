@@ -20,8 +20,14 @@ const payload = {
   },
   pusher: { name: "test-user", email: "test@example.com" },
   sender: { login: "test-user" },
-  commits: [{ message: "test commit" }, { message: "another commit" }],
-  head_commit: { url: `https://github.com/${repo}/commit/abc123` },
+  commits: [
+    { message: "feat: add ticket filters" },
+    { message: "fix: board drag-and-drop" },
+  ],
+  head_commit: {
+    url: `https://github.com/${repo}/commit/abc123`,
+    message: "fix: board drag-and-drop",
+  },
 };
 
 const body = JSON.stringify(payload);
