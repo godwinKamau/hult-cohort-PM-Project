@@ -70,5 +70,25 @@ export const clerkAppearance = {
     organizationListPreviewTextContainer: "text-primary",
     organizationListCreateOrganizationActionButton:
       "text-primary border border-primary/40 hover:bg-primary/10",
+    // Profile modals — dark sidebar so nav text stays readable
+    navbar: "bg-black-light border-r border-primary/20 font-mono",
+    navbarButtons: "gap-1",
+    navbarButton:
+      "text-green-dark hover:bg-primary/10 hover:text-primary font-mono data-[active=true]:bg-primary/15 data-[active=true]:text-primary",
+    navbarButtonText: "text-inherit font-mono",
+    navbarButtonIcon: "text-inherit",
+    navbarMobileMenuRow: "bg-black-light border-b border-primary/20",
+    navbarMobileMenuButton: "text-primary hover:bg-primary/10",
+    pageScrollBox: "bg-black-light",
+    scrollBox: "bg-black-light",
+    profileSection: "border-primary/20",
+    profileSectionTitle: "text-primary font-mono",
+    profileSectionTitleText: "text-primary font-mono",
+    profileSectionContent: "text-green-dark font-mono",
+    profileSectionPrimaryButton: "text-primary hover:text-primary/80 font-mono",
+    accordionTriggerButton: "text-primary hover:bg-primary/10 font-mono",
+    menuButton: "text-primary hover:bg-primary/10",
+    menuList: "bg-black-light border border-primary/20",
+    menuItem: "text-green-dark hover:bg-primary/10 hover:text-primary font-mono",
   },
 };

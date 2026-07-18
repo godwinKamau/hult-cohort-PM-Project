@@ -366,3 +366,61 @@
 [class*="userButtonPopoverMain"] [class*="userPreviewSecondaryIdentifier"] {
   color: #d4d4d4;
 }
+
+/* Organization / user profile — dark sidebar (Clerk defaults to primary green) */
+[class*="organizationProfile"] [class*="navbar"],
+[class*="userProfile"] [class*="navbar"],
+.cl-organizationProfile-root .cl-navbar,
+.cl-userProfile-root .cl-navbar {
+  background-color: var(--black-light) !important;
+  border-right: 1px solid rgba(0, 255, 65, 0.2) !important;
+}
+
+[class*="organizationProfile"] [class*="navbar"] [class*="headerTitle"],
+[class*="userProfile"] [class*="navbar"] [class*="headerTitle"],
+.cl-organizationProfile-root .cl-navbar .cl-headerTitle,
+.cl-userProfile-root .cl-navbar .cl-headerTitle {
+  color: var(--primary) !important;
+}
+
+[class*="organizationProfile"] [class*="navbarButton"],
+[class*="userProfile"] [class*="navbarButton"],
+.cl-organizationProfile-root .cl-navbarButton,
+.cl-userProfile-root .cl-navbarButton {
+  color: var(--green-dark) !important;
+}
+
+[class*="organizationProfile"] [class*="navbarButton"][data-active="true"],
+[class*="userProfile"] [class*="navbarButton"][data-active="true"],
+.cl-organizationProfile-root .cl-navbarButton[data-active="true"],
+.cl-userProfile-root .cl-navbarButton[data-active="true"] {
+  background-color: rgba(0, 255, 65, 0.15) !important;
+  color: var(--primary) !important;
+}
+
+[class*="organizationProfile"] [class*="navbarButton"] svg,
+[class*="userProfile"] [class*="navbarButton"] svg,
+.cl-organizationProfile-root .cl-navbarButton svg,
+.cl-userProfile-root .cl-navbarButton svg {
+  color: inherit !important;
+  fill: currentColor !important;
+}
+
+[class*="organizationProfile"] [class*="navbarButton"]:hover,
+[class*="userProfile"] [class*="navbarButton"]:hover,
+.cl-organizationProfile-root .cl-navbarButton:hover,
+.cl-userProfile-root .cl-navbarButton:hover {
+  background-color: rgba(0, 255, 65, 0.1) !important;
+  color: var(--primary) !important;
+}
+
+[class*="organizationProfile"] [class*="navbarButton"] div,
+[class*="userProfile"] [class*="navbarButton"] div,
+[class*="organizationProfile"] [class*="navbarButton"] span,
+[class*="userProfile"] [class*="navbarButton"] span,
+.cl-organizationProfile-root .cl-navbarButton div,
+.cl-userProfile-root .cl-navbarButton div,
+.cl-organizationProfile-root .cl-navbarButton span,
+.cl-userProfile-root .cl-navbarButton span {
+  color: inherit !important;
+}
