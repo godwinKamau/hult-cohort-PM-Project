@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -15,13 +16,20 @@ import {
   setProjectGithubAction,
   verifyProjectGithubRepoAction,
 } from "@/actions/projects";
+import { inviteToProjectAction } from "@/actions/invites";
 import { cn } from "@/lib/cn";
+import type { OrgMemberDTO, ProjectInviteDTO } from "@/lib/types";
 
 interface ProjectSettingsProps {
   projectId: string;
   githubUsername?: string;
   repoFullName?: string;
   branch?: string;
+  members: OrgMemberDTO[];
+  projectMembers: string[];
+  projectCreatorId: string;
+  pendingInvites: ProjectInviteDTO[];
+  currentUserId: string;
 }
 
 function parseRepoFullName(fullName: string): { owner: string; repo: string } {
@@ -63,7 +71,13 @@ export function ProjectSettings({
   githubUsername = "",
   repoFullName = "",
   branch = "",
+  members,
+  projectMembers,
+  projectCreatorId,
+  pendingInvites,
+  currentUserId,
 }: ProjectSettingsProps) {
+  const router = useRouter();
   const initial = parseRepoFullName(repoFullName);
   const [repoOwner, setRepoOwner] = useState(
     () => initial.owner || githubUsername
@@ -75,6 +89,52 @@ export function ProjectSettings({
   const [verifying, setVerifying] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [selectedInvitee, setSelectedInvitee] = useState("");
+  const [inviting, setInviting] = useState(false);
+  const [inviteMessage, setInviteMessage] = useState("");
+
+  const canManageMembers = useMemo(
+    () =>
+      projectCreatorId === currentUserId ||
+      projectMembers.includes(currentUserId),
+    [projectCreatorId, currentUserId, projectMembers]
+  );
+
+  const memberNameById = useMemo(
+    () => new Map(members.map((member) => [member.clerkUserId, member.name])),
+    [members]
+  );
+
+  const allMemberIds = useMemo(() => {
+    const ids = new Set(projectMembers);
+    ids.add(projectCreatorId);
+    return ids;
+  }, [projectMembers, projectCreatorId]);
+
+  const pendingInviteeIds = useMemo(
+    () => new Set(pendingInvites.map((invite) => invite.inviteeClerkId)),
+    [pendingInvites]
+  );
+
+  const inviteCandidates = useMemo(
+    () =>
+      members.filter(
+        (member) =>
+          member.clerkUserId !== currentUserId &&
+          !allMemberIds.has(member.clerkUserId) &&
+          !pendingInviteeIds.has(member.clerkUserId)
+      ),
+    [members, currentUserId, allMemberIds, pendingInviteeIds]
+  );
+
+  const displayedMembers = useMemo(() => {
+    const ids = [...allMemberIds];
+    return ids.map((id) => ({
+      id,
+      name: memberNameById.get(id) ?? "Unknown member",
+      isCreator: id === projectCreatorId,
+    }));
+  }, [allMemberIds, memberNameById, projectCreatorId]);
 
   const handleVerify = useCallback(async () => {
     const owner = normalizeOwnerInput(repoOwner);
@@ -214,8 +274,112 @@ export function ProjectSettings({
     setSaving(false);
   };
 
+  const handleInvite = async () => {
+    if (!selectedInvitee) {
+      setInviteMessage("> error: select_a_member");
+      return;
+    }
+
+    setInviting(true);
+    setInviteMessage("");
+    const result = await inviteToProjectAction(projectId, selectedInvitee);
+    if (result.success) {
+      setSelectedInvitee("");
+      setInviteMessage("> invite_sent: ok");
+      router.refresh();
+    } else {
+      setInviteMessage(`> error: ${result.error ?? "invite_failed"}`);
+    }
+    setInviting(false);
+  };
+
   return (
-    <div className="space-y-3 border border-primary/20 rounded p-4 bg-black-light/20">
+    <div className="space-y-4">
+      {canManageMembers && (
+        <div className="space-y-3 border border-primary/20 rounded p-4 bg-black-light/20">
+          <p className="font-mono text-xs text-primary">members.config</p>
+
+          <div>
+            <Label>--current_members</Label>
+            <ul className="mt-2 space-y-1">
+              {displayedMembers.map((member) => (
+                <li
+                  key={member.id}
+                  className="font-mono text-xs text-muted-foreground"
+                >
+                  &gt; {member.name}
+                  {member.isCreator ? " (creator)" : ""}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {pendingInvites.length > 0 && (
+            <div>
+              <Label>--pending_invites</Label>
+              <ul className="mt-2 space-y-1">
+                {pendingInvites.map((invite) => (
+                  <li
+                    key={invite.id}
+                    className="font-mono text-xs text-muted-foreground"
+                  >
+                    &gt; {memberNameById.get(invite.inviteeClerkId) ?? "Unknown member"}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div>
+            <Label>--invite_member</Label>
+            <Select
+              value={selectedInvitee || undefined}
+              onValueChange={setSelectedInvitee}
+              disabled={inviteCandidates.length === 0}
+            >
+              <SelectTrigger className="mt-1">
+                <SelectValue
+                  placeholder={
+                    inviteCandidates.length > 0
+                      ? "select_org_member"
+                      : "no_members_available"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {inviteCandidates.map((member) => (
+                  <SelectItem key={member.clerkUserId} value={member.clerkUserId}>
+                    {member.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Button
+            size="sm"
+            onClick={handleInvite}
+            disabled={inviting || !selectedInvitee}
+          >
+            {inviting ? "inviting…" : "invite()"}
+          </Button>
+
+          {inviteMessage && (
+            <p
+              className={cn(
+                "font-mono text-xs",
+                inviteMessage.startsWith("> error:")
+                  ? "text-destructive"
+                  : "text-green-dark"
+              )}
+            >
+              {inviteMessage}
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className="space-y-3 border border-primary/20 rounded p-4 bg-black-light/20">
       <p className="font-mono text-xs text-primary">github.config</p>
 
       <div>
@@ -297,6 +461,7 @@ export function ProjectSettings({
           {message}
         </p>
       )}
+      </div>
     </div>
   );
 }

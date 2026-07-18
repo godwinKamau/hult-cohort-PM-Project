@@ -17,11 +17,13 @@ const ProjectSchema = new Schema(
     archived: { type: Boolean, default: false },
     github: { type: ProjectGithubSchema, default: () => ({}) },
     createdBy: { type: String, required: true },
+    members: { type: [String], default: [], index: true },
   },
   { timestamps: true }
 );
 
 ProjectSchema.index({ organizationId: 1, archived: 1 });
+ProjectSchema.index({ organizationId: 1, members: 1 });
 ProjectSchema.index({ organizationId: 1, "github.repoFullName": 1 });
 
 export type IProject = InferSchemaType<typeof ProjectSchema> & {

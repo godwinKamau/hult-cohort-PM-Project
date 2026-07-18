@@ -11,10 +11,35 @@ function serializeProject(
   if (!project.github || typeof project.github !== "object") {
     project.github = {};
   }
+  if (!Array.isArray(project.members)) {
+    project.members = [];
+  }
   return project;
 }
 
+function membershipFilter(userId: string) {
+  return {
+    $or: [{ createdBy: userId }, { members: userId }],
+  };
+}
+
 export async function listProjects(
+  orgId: string,
+  userId: string,
+  includeArchived = false
+): Promise<ProjectDTO[]> {
+  await connectDB();
+  const filter: Record<string, unknown> = {
+    organizationId: orgId,
+    ...membershipFilter(userId),
+  };
+  if (!includeArchived) filter.archived = false;
+
+  const docs = await Project.find(filter).sort({ updatedAt: -1 }).lean();
+  return docs.map((d) => serializeProject(d)!);
+}
+
+export async function listOrgProjects(
   orgId: string,
   includeArchived = false
 ): Promise<ProjectDTO[]> {
@@ -28,12 +53,14 @@ export async function listProjects(
 
 export async function getProject(
   orgId: string,
-  projectId: string
+  projectId: string,
+  userId: string
 ): Promise<ProjectDTO | null> {
   await connectDB();
   const doc = await Project.findOne({
     _id: projectId,
     organizationId: orgId,
+    ...membershipFilter(userId),
   }).lean();
   return serializeProject(doc);
 }
@@ -49,6 +76,7 @@ export async function createProject(
     name: data.name,
     description: data.description ?? "",
     createdBy: userId,
+    members: [userId],
   });
   return serializeProject(doc.toObject())!;
 }
@@ -95,6 +123,20 @@ export async function setProjectGithub(
         "github.webhookConfiguredAt": new Date(),
       },
     },
+    { returnDocument: "after" }
+  ).lean();
+  return serializeProject(doc);
+}
+
+export async function addProjectMember(
+  orgId: string,
+  projectId: string,
+  clerkUserId: string
+): Promise<ProjectDTO | null> {
+  await connectDB();
+  const doc = await Project.findOneAndUpdate(
+    { _id: projectId, organizationId: orgId },
+    { $addToSet: { members: clerkUserId } },
     { returnDocument: "after" }
   ).lean();
   return serializeProject(doc);

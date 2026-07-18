@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireOrg } from "@/lib/auth";
+import { requireOrg, requireProjectMembership } from "@/lib/auth";
 import {
   getGithubAccessToken,
   listGithubBranches,
@@ -40,7 +40,8 @@ export async function updateProjectAction(
   data: { name?: string; description?: string }
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const { orgId } = await requireOrg();
+    const { orgId, userId } = await requireOrg();
+    await requireProjectMembership(orgId, projectId, userId);
     await projectRepo.updateProject(orgId, projectId, data);
     revalidatePath("/dashboard");
     revalidatePath(`/projects/${projectId}`);
@@ -54,7 +55,8 @@ export async function archiveProjectAction(
   projectId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const { orgId } = await requireOrg();
+    const { orgId, userId } = await requireOrg();
+    await requireProjectMembership(orgId, projectId, userId);
     await projectRepo.archiveProject(orgId, projectId);
     revalidatePath("/dashboard");
     return { success: true };
@@ -100,7 +102,8 @@ export async function setProjectGithubAction(
   github: { owner?: string; repoName?: string; branch?: string }
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const { orgId } = await requireOrg();
+    const { orgId, userId } = await requireOrg();
+    await requireProjectMembership(orgId, projectId, userId);
     const target = normalizeRepoTarget(
       github.owner ?? "",
       github.repoName ?? ""

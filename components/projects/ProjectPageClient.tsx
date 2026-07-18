@@ -8,6 +8,7 @@ import type {
   TagDTO,
   NoteDTO,
   OrgMemberDTO,
+  ProjectInviteDTO,
   TicketStatus,
 } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,8 @@ interface ProjectPageClientProps {
   tags: TagDTO[];
   notes: NoteDTO[];
   members: OrgMemberDTO[];
+  pendingInvites: ProjectInviteDTO[];
+  currentUserId: string;
   githubUsername?: string;
 }
 
@@ -43,6 +46,8 @@ export function ProjectPageClient({
   tags,
   notes,
   members,
+  pendingInvites,
+  currentUserId,
   githubUsername = "",
 }: ProjectPageClientProps) {
   const router = useRouter();
@@ -139,6 +144,11 @@ export function ProjectPageClient({
           githubUsername={githubUsername}
           repoFullName={project.github.repoFullName}
           branch={project.github.branch}
+          members={members}
+          projectMembers={project.members}
+          projectCreatorId={project.createdBy}
+          pendingInvites={pendingInvites}
+          currentUserId={currentUserId}
         />
       )}
 

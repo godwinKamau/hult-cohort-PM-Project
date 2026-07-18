@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { isOrgMember, requireOrg } from "@/lib/auth";
+import { isOrgMember, requireOrg, requireProjectMembership } from "@/lib/auth";
 import * as ticketRepo from "@/repositories/tickets";
 import type { TicketDTO, TicketStatus } from "@/lib/types";
 
@@ -14,6 +14,7 @@ export async function createTicketAction(data: {
 }): Promise<{ success: boolean; ticket?: TicketDTO; error?: string }> {
   try {
     const { orgId, userId } = await requireOrg();
+    await requireProjectMembership(orgId, data.projectId, userId);
 
     if (data.assigneeClerkId) {
       const member = await isOrgMember(orgId, data.assigneeClerkId);
@@ -41,7 +42,8 @@ export async function updateTicketAction(
   }>
 ): Promise<{ success: boolean; ticket?: TicketDTO; error?: string }> {
   try {
-    const { orgId } = await requireOrg();
+    const { orgId, userId } = await requireOrg();
+    await requireProjectMembership(orgId, projectId, userId);
 
     if (data.assigneeClerkId) {
       const member = await isOrgMember(orgId, data.assigneeClerkId);
@@ -65,7 +67,8 @@ export async function moveTicketAction(
   position: number
 ): Promise<{ success: boolean; ticket?: TicketDTO; error?: string }> {
   try {
-    const { orgId } = await requireOrg();
+    const { orgId, userId } = await requireOrg();
+    await requireProjectMembership(orgId, projectId, userId);
     const ticket = await ticketRepo.moveTicket(
       orgId,
       ticketId,

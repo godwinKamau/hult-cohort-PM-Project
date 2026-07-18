@@ -2,6 +2,8 @@ export type TicketStatus = "todo" | "in_progress" | "done";
 
 export type NotificationType = "push" | "pull_request" | "reaction";
 
+export type ProjectInviteStatus = "pending" | "accepted" | "rejected";
+
 export const TAG_COLORS = [
   "#00ff41",
   "#00ccff",
@@ -42,8 +44,25 @@ export interface ProjectDTO {
   archived: boolean;
   github: ProjectGithubDTO;
   createdBy: string;
+  members: string[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ProjectInviteDTO {
+  id: string;
+  organizationId: string;
+  projectId: string;
+  inviterClerkId: string;
+  inviteeClerkId: string;
+  status: ProjectInviteStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectInviteInboxDTO extends ProjectInviteDTO {
+  projectName: string;
+  inviterName: string;
 }
 
 export interface TagDTO {
