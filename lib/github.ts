@@ -1,4 +1,112 @@
+import { clerkClient } from "@clerk/nextjs/server";
 import { createHmac, timingSafeEqual } from "crypto";
+
+const GITHUB_API_HEADERS = {
+  Accept: "application/vnd.github+json",
+  "X-GitHub-Api-Version": "2022-11-28",
+} as const;
+
+export function normalizeRepoName(repoName: string, owner?: string): string {
+  const trimmed = repoName.trim();
+  if (!trimmed) return "";
+
+  if (owner && trimmed.startsWith(`${owner}/`)) {
+    return trimmed.slice(owner.length + 1);
+  }
+
+  const slashIndex = trimmed.indexOf("/");
+  if (slashIndex > 0) {
+    return trimmed.slice(slashIndex + 1);
+  }
+
+  return trimmed;
+}
+
+export async function getGithubAccessToken(
+  userId: string
+): Promise<string | null> {
+  const client = await clerkClient();
+
+  try {
+    const response = await client.users.getUserOauthAccessToken(
+      userId,
+      "oauth_github"
+    );
+    const token = response.data[0]?.token;
+    if (token) return token;
+  } catch {
+    // Token unavailable or provider not configured.
+  }
+
+  return null;
+}
+
+export async function verifyGithubRepo(
+  token: string,
+  owner: string,
+  repo: string
+): Promise<{ defaultBranch: string }> {
+  const response = await fetch(
+    `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`,
+    {
+      headers: {
+        ...GITHUB_API_HEADERS,
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  if (response.status === 404) {
+    throw new Error("Repository not found or you do not have access");
+  }
+
+  if (!response.ok) {
+    throw new Error(`GitHub API error: ${response.status}`);
+  }
+
+  const data = (await response.json()) as { default_branch?: string };
+  return { defaultBranch: data.default_branch ?? "main" };
+}
+
+export async function listGithubBranches(
+  token: string,
+  owner: string,
+  repo: string
+): Promise<string[]> {
+  const branches: string[] = [];
+  let page = 1;
+
+  while (true) {
+    const response = await fetch(
+      `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/branches?per_page=100&page=${page}`,
+      {
+        headers: {
+          ...GITHUB_API_HEADERS,
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`GitHub API error: ${response.status}`);
+    }
+
+    const data = (await response.json()) as { name: string }[];
+    if (!Array.isArray(data) || data.length === 0) {
+      break;
+    }
+
+    branches.push(...data.map((branch) => branch.name));
+
+    if (data.length < 100) {
+      break;
+    }
+
+    page += 1;
+  }
+
+  return branches;
+}
 
 export function verifyGithubSignature(
   rawBody: string,

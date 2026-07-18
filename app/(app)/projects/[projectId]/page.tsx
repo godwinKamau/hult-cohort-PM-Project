@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { requireOrg, getOrgMembers } from "@/lib/auth";
+import { requireOrg, getOrgMembers, getUserGithubUsername } from "@/lib/auth";
 import * as projectRepo from "@/repositories/projects";
 import * as ticketRepo from "@/repositories/tickets";
 import * as tagRepo from "@/repositories/tags";
@@ -13,13 +13,14 @@ interface ProjectPageProps {
 
 export default async function ProjectPage({ params }: ProjectPageProps) {
   const { projectId } = await params;
-  const { orgId } = await requireOrg();
+  const { orgId, userId } = await requireOrg();
 
-  const [project, tickets, tags, members] = await Promise.all([
+  const [project, tickets, tags, members, githubUsername] = await Promise.all([
     projectRepo.getProject(orgId, projectId),
     ticketRepo.listTickets(orgId, projectId),
     tagRepo.listTags(orgId),
     getOrgMembers(orgId),
+    getUserGithubUsername(userId),
   ]);
 
   const notes = await Promise.all(
@@ -34,6 +35,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         tags={tags}
         notes={notes}
         members={members}
+        githubUsername={githubUsername ?? ""}
       />
     </Suspense>
   );
