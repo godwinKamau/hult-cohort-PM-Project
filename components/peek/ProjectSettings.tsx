@@ -15,6 +15,7 @@ import {
   setProjectGithubAction,
   verifyProjectGithubRepoAction,
 } from "@/actions/projects";
+import { cn } from "@/lib/cn";
 
 interface ProjectSettingsProps {
   projectId: string;
@@ -23,21 +24,30 @@ interface ProjectSettingsProps {
   branch?: string;
 }
 
-function parseRepoName(fullName: string, owner: string): string {
-  if (!fullName) return "";
-  if (owner && fullName.startsWith(`${owner}/`)) {
-    return fullName.slice(owner.length + 1);
+function parseRepoFullName(fullName: string): { owner: string; repo: string } {
+  const trimmed = fullName.trim();
+  const slashIndex = trimmed.indexOf("/");
+  if (slashIndex <= 0) {
+    return { owner: "", repo: trimmed };
   }
-  const slashIndex = fullName.indexOf("/");
-  return slashIndex >= 0 ? fullName.slice(slashIndex + 1) : fullName;
+
+  return {
+    owner: trimmed.slice(0, slashIndex),
+    repo: trimmed.slice(slashIndex + 1),
+  };
+}
+
+function normalizeOwnerInput(value: string): string {
+  return value.trim().replace(/^@/, "");
 }
 
 function normalizeRepoInput(value: string, owner: string): string {
   const trimmed = value.trim();
   if (!trimmed) return "";
 
-  if (owner && trimmed.startsWith(`${owner}/`)) {
-    return trimmed.slice(owner.length + 1);
+  const normalizedOwner = normalizeOwnerInput(owner);
+  if (normalizedOwner && trimmed.startsWith(`${normalizedOwner}/`)) {
+    return trimmed.slice(normalizedOwner.length + 1);
   }
 
   const slashIndex = trimmed.indexOf("/");
@@ -54,9 +64,11 @@ export function ProjectSettings({
   repoFullName = "",
   branch = "",
 }: ProjectSettingsProps) {
-  const [repoName, setRepoName] = useState(() =>
-    parseRepoName(repoFullName, githubUsername)
+  const initial = parseRepoFullName(repoFullName);
+  const [repoOwner, setRepoOwner] = useState(
+    () => initial.owner || githubUsername
   );
+  const [repoName, setRepoName] = useState(() => initial.repo);
   const [branchName, setBranchName] = useState(branch);
   const [branches, setBranches] = useState<string[]>(branch ? [branch] : []);
   const [verified, setVerified] = useState(false);
@@ -65,14 +77,16 @@ export function ProjectSettings({
   const [message, setMessage] = useState("");
 
   const handleVerify = useCallback(async () => {
-    if (!githubUsername) {
-      setMessage("> error: sign_in_with_github_required");
+    const owner = normalizeOwnerInput(repoOwner);
+    const repo = normalizeRepoInput(repoName, owner);
+
+    if (!owner) {
+      setMessage("> error: owner_required");
       setVerified(false);
       return;
     }
 
-    const normalizedRepo = normalizeRepoInput(repoName, githubUsername);
-    if (!normalizedRepo) {
+    if (!repo) {
       setMessage("> error: repository_name_required");
       setVerified(false);
       return;
@@ -81,10 +95,11 @@ export function ProjectSettings({
     setVerifying(true);
     setMessage("");
 
-    const result = await verifyProjectGithubRepoAction(normalizedRepo);
+    const result = await verifyProjectGithubRepoAction(owner, repo);
 
     if (result.success && result.branches) {
-      setRepoName(normalizedRepo);
+      setRepoOwner(owner);
+      setRepoName(repo);
       setBranches(result.branches);
       setVerified(true);
 
@@ -109,25 +124,25 @@ export function ProjectSettings({
     }
 
     setVerifying(false);
-  }, [githubUsername, repoName]);
+  }, [repoName, repoOwner]);
 
   useEffect(() => {
-    if (!repoFullName || !githubUsername) return;
+    if (!repoFullName) return;
 
     let cancelled = false;
+    const { owner, repo } = parseRepoFullName(repoFullName);
+    if (!owner || !repo) return;
 
     async function autoVerify() {
-      const initialRepo = parseRepoName(repoFullName, githubUsername);
-      if (!initialRepo) return;
-
       setVerifying(true);
       setMessage("");
 
-      const result = await verifyProjectGithubRepoAction(initialRepo);
+      const result = await verifyProjectGithubRepoAction(owner, repo);
       if (cancelled) return;
 
       if (result.success && result.branches) {
-        setRepoName(initialRepo);
+        setRepoOwner(owner);
+        setRepoName(repo);
         setBranches(result.branches);
         setVerified(true);
 
@@ -135,10 +150,7 @@ export function ProjectSettings({
           if (currentBranch && result.branches?.includes(currentBranch)) {
             return currentBranch;
           }
-          if (
-            branch &&
-            result.branches?.includes(branch)
-          ) {
+          if (branch && result.branches?.includes(branch)) {
             return branch;
           }
           if (
@@ -165,10 +177,17 @@ export function ProjectSettings({
     return () => {
       cancelled = true;
     };
-  }, [branch, githubUsername, repoFullName]);
+  }, [branch, repoFullName]);
+
+  const handleOwnerChange = (value: string) => {
+    setRepoOwner(normalizeOwnerInput(value));
+    setVerified(false);
+    setBranches([]);
+    setMessage("");
+  };
 
   const handleRepoChange = (value: string) => {
-    setRepoName(normalizeRepoInput(value, githubUsername));
+    setRepoName(normalizeRepoInput(value, repoOwner));
     setVerified(false);
     setBranches([]);
     setMessage("");
@@ -187,6 +206,7 @@ export function ProjectSettings({
 
     setSaving(true);
     const result = await setProjectGithubAction(projectId, {
+      owner: repoOwner,
       repoName,
       branch: branchName,
     });
@@ -198,74 +218,84 @@ export function ProjectSettings({
     <div className="space-y-3 border border-primary/20 rounded p-4 bg-black-light/20">
       <p className="font-mono text-xs text-primary">github.config</p>
 
-      {!githubUsername ? (
-        <p className="font-mono text-xs text-muted-foreground">
-          &gt; sign_in_with_github_required
+      <div>
+        <Label htmlFor="owner">--owner</Label>
+        <Input
+          id="owner"
+          value={repoOwner}
+          onChange={(e) => handleOwnerChange(e.target.value)}
+          placeholder={githubUsername || "github-username"}
+          className="mt-1"
+        />
+      </div>
+
+      <div>
+        <Label htmlFor="repo">--repo</Label>
+        <Input
+          id="repo"
+          value={repoName}
+          onChange={(e) => handleRepoChange(e.target.value)}
+          placeholder="my-repo"
+          className="mt-1"
+        />
+        <p className="font-mono text-xs text-muted-foreground mt-1">
+          &gt; tracks {repoOwner || "owner"}/{repoName || "repo"}
         </p>
-      ) : (
-        <>
-          <div>
-            <Label htmlFor="repo">--repo</Label>
-            <div className="flex mt-1">
-              <span className="inline-flex items-center rounded-l border border-r-0 border-primary/20 bg-black-light/40 px-3 font-mono text-sm text-muted-foreground">
-                {githubUsername}/
-              </span>
-              <Input
-                id="repo"
-                value={repoName}
-                onChange={(e) => handleRepoChange(e.target.value)}
-                placeholder="my-repo"
-                className="rounded-l-none"
-              />
-            </div>
-          </div>
+      </div>
 
-          <div>
-            <Label htmlFor="branch">--branch</Label>
-            <Select
-              value={branchName || undefined}
-              onValueChange={setBranchName}
-              disabled={!verified || branches.length === 0}
-            >
-              <SelectTrigger id="branch" className="mt-1">
-                <SelectValue
-                  placeholder={
-                    verified ? "select_branch" : "verify_repo_to_load_branches"
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {branches.map((name) => (
-                  <SelectItem key={name} value={name}>
-                    {name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+      <div>
+        <Label htmlFor="branch">--branch</Label>
+        <Select
+          value={branchName || undefined}
+          onValueChange={setBranchName}
+          disabled={!verified || branches.length === 0}
+        >
+          <SelectTrigger id="branch" className="mt-1">
+            <SelectValue
+              placeholder={
+                verified ? "select_branch" : "verify_repo_to_load_branches"
+              }
+            />
+          </SelectTrigger>
+          <SelectContent>
+            {branches.map((name) => (
+              <SelectItem key={name} value={name}>
+                {name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-          <div className="flex flex-wrap gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleVerify}
-              disabled={verifying || !repoName.trim()}
-            >
-              {verifying ? "verifying…" : "verify_repo()"}
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleSave}
-              disabled={saving || !verified || !branchName}
-            >
-              {saving ? "linking…" : "link_repo()"}
-            </Button>
-          </div>
-        </>
-      )}
+      <div className="flex flex-wrap gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleVerify}
+          disabled={verifying || !repoOwner.trim() || !repoName.trim()}
+        >
+          {verifying ? "verifying…" : "verify_repo()"}
+        </Button>
+        <Button
+          size="sm"
+          onClick={handleSave}
+          disabled={saving || !verified || !branchName}
+        >
+          {saving ? "linking…" : "link_repo()"}
+        </Button>
+      </div>
 
       {message && (
-        <p className="font-mono text-xs text-green-dark">{message}</p>
+        <p
+          className={cn(
+            "font-mono text-xs",
+            message.startsWith("> error:")
+              ? "text-destructive"
+              : "text-green-dark"
+          )}
+        >
+          {message}
+        </p>
       )}
     </div>
   );

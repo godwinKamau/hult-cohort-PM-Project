@@ -1,22 +1,24 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireOrg, getUserGithubUsername } from "@/lib/auth";
+import { requireOrg } from "@/lib/auth";
 import {
   getGithubAccessToken,
   listGithubBranches,
-  normalizeRepoName,
+  normalizeRepoTarget,
   verifyGithubRepo,
 } from "@/lib/github";
 import * as projectRepo from "@/repositories/projects";
 import type { ProjectDTO } from "@/lib/types";
 
-async function getLockedGithubUsername(userId: string): Promise<string> {
-  const githubUsername = await getUserGithubUsername(userId);
-  if (!githubUsername) {
-    throw new Error("GitHub account not linked. Sign in with GitHub.");
+async function requireGithubToken(userId: string): Promise<string> {
+  const token = await getGithubAccessToken(userId);
+  if (!token) {
+    throw new Error(
+      "GitHub token unavailable. Sign out and sign in again with GitHub."
+    );
   }
-  return githubUsername;
+  return token;
 }
 
 export async function createProjectAction(data: {
@@ -61,7 +63,10 @@ export async function archiveProjectAction(
   }
 }
 
-export async function verifyProjectGithubRepoAction(repoName: string): Promise<{
+export async function verifyProjectGithubRepoAction(
+  owner: string,
+  repoName: string
+): Promise<{
   success: boolean;
   branches?: string[];
   defaultBranch?: string;
@@ -69,28 +74,20 @@ export async function verifyProjectGithubRepoAction(repoName: string): Promise<{
 }> {
   try {
     const { userId } = await requireOrg();
-    const owner = await getLockedGithubUsername(userId);
-    const normalizedRepo = normalizeRepoName(repoName, owner);
+    const target = normalizeRepoTarget(owner, repoName);
 
-    if (!normalizedRepo) {
-      return { success: false, error: "Repository name is required" };
+    if (!target) {
+      return { success: false, error: "Owner and repository name are required" };
     }
 
-    const token = await getGithubAccessToken(userId);
-    if (!token) {
-      return {
-        success: false,
-        error:
-          "GitHub token unavailable. Sign out and sign in again with GitHub.",
-      };
-    }
+    const token = await requireGithubToken(userId);
 
     const { defaultBranch } = await verifyGithubRepo(
       token,
-      owner,
-      normalizedRepo
+      target.owner,
+      target.repo
     );
-    const branches = await listGithubBranches(token, owner, normalizedRepo);
+    const branches = await listGithubBranches(token, target.owner, target.repo);
 
     return { success: true, branches, defaultBranch };
   } catch (e) {
@@ -100,21 +97,23 @@ export async function verifyProjectGithubRepoAction(repoName: string): Promise<{
 
 export async function setProjectGithubAction(
   projectId: string,
-  github: { repoName?: string; branch?: string }
+  github: { owner?: string; repoName?: string; branch?: string }
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const { orgId, userId } = await requireOrg();
-    const owner = await getLockedGithubUsername(userId);
-    const repoName = normalizeRepoName(github.repoName ?? "", owner);
+    const { orgId } = await requireOrg();
+    const target = normalizeRepoTarget(
+      github.owner ?? "",
+      github.repoName ?? ""
+    );
 
-    if (!repoName) {
-      return { success: false, error: "Repository name is required" };
+    if (!target) {
+      return { success: false, error: "Owner and repository name are required" };
     }
 
     const branch = github.branch?.trim() || "main";
 
     await projectRepo.setProjectGithub(orgId, projectId, {
-      repoFullName: `${owner}/${repoName}`,
+      repoFullName: `${target.owner}/${target.repo}`,
       branch,
     });
     revalidatePath(`/projects/${projectId}`);
