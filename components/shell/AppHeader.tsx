@@ -58,6 +58,15 @@ export function AppHeader({ orgSlug = "workspace" }: AppHeaderProps) {
                       "font-mono text-sm text-primary border border-primary/20 bg-black-light/50 px-2 py-1 rounded hover:bg-primary/10",
                   },
                 }}
+                organizationProfileProps={{
+                  appearance: {
+                    elements: {
+                      userPreviewSecondaryIdentifier: {
+                        display: "none",
+                      },
+                    },
+                  },
+                }}
                 hidePersonal
               />
             </div>
@@ -94,7 +103,18 @@ export function AppHeader({ orgSlug = "workspace" }: AppHeaderProps) {
               </Button>
             ))}
             <div className="pt-2">
-              <OrganizationSwitcher hidePersonal />
+              <OrganizationSwitcher
+                hidePersonal
+                organizationProfileProps={{
+                  appearance: {
+                    elements: {
+                      userPreviewSecondaryIdentifier: {
+                        display: "none",
+                      },
+                    },
+                  },
+                }}
+              />
             </div>
           </nav>
         )}

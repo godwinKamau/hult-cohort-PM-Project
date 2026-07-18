@@ -424,3 +424,13 @@
 .cl-userProfile-root .cl-navbarButton span {
   color: inherit !important;
 }
+
+/* Org profile Members tab: hide emails under member names */
+.cl-organizationProfile-root
+  .cl-pageScrollBox:has(.cl-organizationProfileMembersSearchInput)
+  .cl-userPreviewSecondaryIdentifier,
+[class*="organizationProfile"]
+  [class*="pageScrollBox"]:has([class*="organizationProfileMembersSearchInput"])
+  [class*="userPreviewSecondaryIdentifier"] {
+  display: none !important;
+}
