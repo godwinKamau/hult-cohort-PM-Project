@@ -34,6 +34,7 @@ interface ProjectPageClientProps {
   tags: TagDTO[];
   notes: NoteDTO[];
   members: OrgMemberDTO[];
+  githubUsername?: string;
 }
 
 export function ProjectPageClient({
@@ -42,6 +43,7 @@ export function ProjectPageClient({
   tags,
   notes,
   members,
+  githubUsername = "",
 }: ProjectPageClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -134,6 +136,7 @@ export function ProjectPageClient({
       {showSettings && (
         <ProjectSettings
           projectId={project.id}
+          githubUsername={githubUsername}
           repoFullName={project.github.repoFullName}
           branch={project.github.branch}
         />

@@ -10,7 +10,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { EmptyState } from "@/components/states/EmptyState";
 import { createProjectAction } from "@/actions/projects";
-import { updateGithubUsernameAction } from "@/actions/user";
 
 interface DashboardClientProps {
   projects: ProjectDTO[];
@@ -25,7 +24,6 @@ export function DashboardClient({
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [ghUser, setGhUser] = useState(githubUsername);
   const [creating, setCreating] = useState(false);
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -42,10 +40,6 @@ export function DashboardClient({
     setCreating(false);
   };
 
-  const handleSaveGithub = async () => {
-    await updateGithubUsernameAction(ghUser);
-  };
-
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -56,21 +50,17 @@ export function DashboardClient({
       </div>
 
       <div className="border border-primary/20 rounded p-4 bg-black-light/20">
-        <Label htmlFor="gh-user">--github_username</Label>
-        <div className="flex gap-2 mt-1">
-          <Input
-            id="gh-user"
-            value={ghUser}
-            onChange={(e) => setGhUser(e.target.value)}
-            placeholder="your-github-handle"
-            className="max-w-xs"
-          />
-          <Button size="sm" variant="outline" onClick={handleSaveGithub}>
-            save
-          </Button>
-        </div>
+        <Label>--github_username</Label>
+        {githubUsername ? (
+          <p className="font-mono text-primary mt-1">@{githubUsername}</p>
+        ) : (
+          <p className="font-mono text-xs text-muted-foreground mt-1">
+            &gt; sign_in_with_github_required
+          </p>
+        )}
         <p className="font-mono text-xs text-muted-foreground mt-1">
-          &gt; used_to_match_github_push_events_to_your_account
+          &gt; linked_from_your_github_account ·
+          used_to_match_github_push_events_to_your_account
         </p>
       </div>
 

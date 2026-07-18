@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { Webhook } from "svix";
 import { headers } from "next/headers";
 import { connectDB } from "@/lib/db";
+import { getGithubLoginFromExternalAccounts } from "@/lib/auth";
 import { User, Organization } from "@/models";
 
 export async function POST(req: Request) {
@@ -54,6 +55,11 @@ export async function POST(req: Request) {
       const firstName = data.first_name as string | undefined;
       const lastName = data.last_name as string | undefined;
       const imageUrl = data.image_url as string | undefined;
+      const externalAccounts = data.external_accounts as
+        | { provider?: string; username?: string | null }[]
+        | undefined;
+      const githubUsername =
+        getGithubLoginFromExternalAccounts(externalAccounts);
 
       await User.findOneAndUpdate(
         { clerkUserId },
@@ -65,6 +71,7 @@ export async function POST(req: Request) {
             (data.username as string) ||
             "User",
           imageUrl,
+          ...(githubUsername ? { githubUsername } : {}),
         },
         { upsert: true }
       );

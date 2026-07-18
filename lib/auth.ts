@@ -36,10 +36,40 @@ export async function getOptionalOrg(): Promise<AuthContext | null> {
   return { userId, orgId };
 }
 
+type ClerkExternalAccount = {
+  provider?: string;
+  username?: string | null;
+};
+
+export function getGithubLoginFromExternalAccounts(
+  externalAccounts: ClerkExternalAccount[] | undefined
+): string | undefined {
+  const githubAccount = externalAccounts?.find(
+    (account) =>
+      account.provider === "oauth_github" || account.provider === "github"
+  );
+  return githubAccount?.username?.trim() || undefined;
+}
+
+export function getGithubLoginFromClerkUser(user: {
+  externalAccounts?: ClerkExternalAccount[];
+}): string | undefined {
+  return getGithubLoginFromExternalAccounts(user.externalAccounts);
+}
+
+export async function getUserGithubUsername(
+  clerkUserId: string
+): Promise<string | null> {
+  await connectDB();
+  const user = await User.findOne({ clerkUserId }).lean();
+  return user?.githubUsername ?? null;
+}
+
 export async function syncUserFromClerk(clerkUserId: string) {
   await connectDB();
   const client = await clerkClient();
   const clerkUser = await client.users.getUser(clerkUserId);
+  const githubUsername = getGithubLoginFromClerkUser(clerkUser);
 
   await User.findOneAndUpdate(
     { clerkUserId },
@@ -51,6 +81,7 @@ export async function syncUserFromClerk(clerkUserId: string) {
         clerkUser.username ||
         "User",
       imageUrl: clerkUser.imageUrl,
+      ...(githubUsername ? { githubUsername } : {}),
     },
     { upsert: true, returnDocument: "after" }
   );

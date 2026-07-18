@@ -4,6 +4,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import useSWR from "swr";
 import type { BannerItemDTO } from "@/lib/types";
 import { BannerItem } from "./BannerItem";
+import { OnlineMembersDropdown } from "./OnlineMembersDropdown";
 import { cn } from "@/lib/cn";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -18,6 +19,12 @@ export function NotificationBanner() {
   const viewportRef = useRef<HTMLDivElement>(null);
   const [scrollDuration, setScrollDuration] = useState(MIN_DURATION_SEC);
   const [shouldScroll, setShouldScroll] = useState(false);
+
+  useSWR("/api/poll/github", fetcher, {
+    refreshInterval: 20000,
+    refreshWhenHidden: false,
+    dedupingInterval: 15000,
+  });
 
   const { data, mutate } = useSWR<{ items: BannerItemDTO[] }>(
     "/api/banner",
@@ -93,10 +100,7 @@ export function NotificationBanner() {
   return (
     <div className="fixed top-[57px] left-0 right-0 z-40 bg-black-deep/90 border-b border-primary/20 overflow-hidden">
       <div className="flex items-center h-8">
-        <div className="shrink-0 px-4 font-mono text-xs text-primary border-r border-primary/20 flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-          <span className="terminal-cursor">status: online</span>
-        </div>
+        <OnlineMembersDropdown />
         <div ref={viewportRef} className="flex-1 overflow-hidden relative">
           {items.length === 0 ? (
             <span className="font-mono text-xs text-muted-foreground px-4">

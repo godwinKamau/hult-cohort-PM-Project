@@ -116,3 +116,10 @@ export interface OrgMemberDTO {
   name: string;
   imageUrl?: string;
 }
+
+export interface PresenceMemberDTO {
+  clerkUserId: string;
+  name: string;
+  imageUrl?: string;
+  githubUsername?: string;
+}
