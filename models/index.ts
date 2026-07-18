@@ -5,3 +5,4 @@ export { Ticket } from "./Ticket";
 export { Note } from "./Note";
 export { Tag } from "./Tag";
 export { Notification } from "./Notification";
+export { ProjectInvite } from "./ProjectInvite";

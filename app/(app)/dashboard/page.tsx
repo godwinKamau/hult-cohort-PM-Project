@@ -6,7 +6,7 @@ import { DashboardClient } from "@/components/dashboard/DashboardClient";
 
 export default async function DashboardPage() {
   const { userId, orgId } = await requireOrg();
-  const projects = await projectRepo.listProjects(orgId);
+  const projects = await projectRepo.listProjects(orgId, userId);
 
   await connectDB();
   const user = await User.findOne({ clerkUserId: userId }).lean();

@@ -133,7 +133,7 @@ export async function pollOrgGithubEvents({
   orgId: string;
   token: string;
 }): Promise<void> {
-  const projects = await projectRepo.listProjects(orgId);
+  const projects = await projectRepo.listOrgProjects(orgId);
   const repoTargets = new Map<string, RepoPollTarget>();
 
   for (const project of projects) {

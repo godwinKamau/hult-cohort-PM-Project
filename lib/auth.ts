@@ -129,3 +129,15 @@ export async function isOrgMember(
   const members = await getOrgMembers(orgId);
   return members.some((m) => m.clerkUserId === clerkUserId);
 }
+
+export async function requireProjectMembership(
+  orgId: string,
+  projectId: string,
+  userId: string
+): Promise<void> {
+  const { getProject } = await import("@/repositories/projects");
+  const project = await getProject(orgId, projectId, userId);
+  if (!project) {
+    throw new Error("You do not have access to this project");
+  }
+}
