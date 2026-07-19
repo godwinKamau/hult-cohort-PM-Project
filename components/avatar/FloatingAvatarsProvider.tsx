@@ -13,10 +13,60 @@ import type { PixelAvatarDTO } from "@/lib/types";
 import { PixelAvatar } from "./PixelAvatar";
 
 const MAX_FLOATING_AVATARS = 12;
+const AVATAR_SIZE = 48;
+const VIEWPORT_PADDING = 16;
+const TOP_SAFE_ZONE = 120;
 
 export interface FloatingAvatar extends PixelAvatarDTO {
   id: string;
-  seed: number;
+  left: number;
+  bottom: number;
+  driftX: number;
+  driftY: number;
+  rotate: number;
+  duration: number;
+}
+
+function createFloatingAvatarEntry(
+  avatar: PixelAvatarDTO,
+  id: string
+): FloatingAvatar {
+  const seed = Math.random();
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  const minX = VIEWPORT_PADDING;
+  const maxX = vw - AVATAR_SIZE - VIEWPORT_PADDING;
+  const left = minX + seed * Math.max(0, maxX - minX);
+
+  const minBottom = VIEWPORT_PADDING;
+  const maxBottom = Math.min(vh * 0.25, 120);
+  const bottom = minBottom + seed * Math.max(0, maxBottom - minBottom);
+
+  const startTop = vh - bottom - AVATAR_SIZE;
+  const topLimit = TOP_SAFE_ZONE + VIEWPORT_PADDING;
+
+  const maxDriftLeft = left - minX;
+  const maxDriftRight = maxX - left;
+  const maxHorizontalDrift = Math.min(maxDriftLeft, maxDriftRight, 96);
+  const driftX =
+    maxHorizontalDrift > 0 ? (seed * 2 - 1) * maxHorizontalDrift : 0;
+
+  const maxDriftUp = Math.max(0, startTop - topLimit);
+  const maxVerticalDrift = Math.min(maxDriftUp, 160);
+  const driftY =
+    maxVerticalDrift > 0 ? -(seed * 0.5 + 0.5) * maxVerticalDrift : 0;
+
+  return {
+    ...avatar,
+    id,
+    left,
+    bottom,
+    driftX,
+    driftY,
+    rotate: (seed * 2 - 1) * 15,
+    duration: 18 + seed * 14,
+  };
 }
 
 interface FloatingAvatarsContextValue {
@@ -40,11 +90,8 @@ export function FloatingAvatarsProvider({
   const nextId = useRef(0);
 
   const addFloatingAvatar = useCallback((avatar: PixelAvatarDTO) => {
-    const entry: FloatingAvatar = {
-      ...avatar,
-      id: `float-${nextId.current++}`,
-      seed: Math.random(),
-    };
+    const id = `float-${nextId.current++}`;
+    const entry = createFloatingAvatarEntry(avatar, id);
 
     setFloatingAvatars((current) => {
       const next = [...current, entry];
@@ -84,31 +131,24 @@ function FloatingAvatarsLayer({ avatars }: { avatars: FloatingAvatar[] }) {
       className="fixed inset-0 z-0 pointer-events-none overflow-hidden"
       aria-hidden
     >
-      {avatars.map((avatar) => {
-        const driftX = (avatar.seed * 2 - 1) * 120;
-        const driftY = -(80 + avatar.seed * 160);
-        const rotate = (avatar.seed * 2 - 1) * 25;
-        const duration = 18 + avatar.seed * 14;
-        const left = 8 + avatar.seed * 84;
-
-        return (
+      {avatars.map((avatar) => (
           <div
             key={avatar.id}
-            className="floating-avatar absolute bottom-4 opacity-40"
+            className="floating-avatar absolute opacity-40"
             style={
               {
-                left: `${left}%`,
-                "--drift-x": `${driftX}px`,
-                "--drift-y": `${driftY}px`,
-                "--drift-rotate": `${rotate}deg`,
-                "--float-duration": `${duration}s`,
+                left: `${avatar.left}px`,
+                bottom: `${avatar.bottom}px`,
+                "--drift-x": `${avatar.driftX}px`,
+                "--drift-y": `${avatar.driftY}px`,
+                "--drift-rotate": `${avatar.rotate}deg`,
+                "--float-duration": `${avatar.duration}s`,
               } as React.CSSProperties
             }
           >
             <PixelAvatar grid={avatar.grid} color={avatar.color} size={48} />
           </div>
-        );
-      })}
+        ))}
     </div>
   );
 }
