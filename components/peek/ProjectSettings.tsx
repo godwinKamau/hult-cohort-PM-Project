@@ -23,6 +23,7 @@ import { inviteToProjectAction, inviteToProjectByEmailAction } from "@/actions/i
 import { ALL_BRANCHES, branchLabel, isAllBranches } from "@/lib/github-branches";
 import { cn } from "@/lib/cn";
 import {
+  formatPendingInviteStatus,
   getInviteEmptyHelperText,
   getInviteEmptyPlaceholder,
   getInviteEmptyReason,
@@ -239,19 +240,49 @@ export function ProjectSettings({
   );
 
   const inviteSelectHelperId = `invite-member-helper-${projectId}`;
+  const githubRepoHelperId = `github-repo-helper-${projectId}`;
+  const githubBranchHelperId = `github-branch-helper-${projectId}`;
+
+  const repoSelectPlaceholder = useMemo(() => {
+    if (!normalizeOwnerInput(repoOwner)) {
+      return "Enter an owner first";
+    }
+
+    if (loadingRepos) {
+      return "Loading repos…";
+    }
+
+    if (ownerRepos.length > 0) {
+      return "Select a repo";
+    }
+
+    return "No repos for this owner";
+  }, [loadingRepos, ownerRepos.length, repoOwner]);
+
+  const branchHelperText = useMemo(() => {
+    if (!verified) {
+      return "";
+    }
+
+    if (isAllBranches(branchName)) {
+      return "> Tracks activity across all branches in this repo";
+    }
+
+    return `> Tracks ${branchLabel(branchName)} only`;
+  }, [branchName, verified]);
 
   const handleVerify = useCallback(async () => {
     const owner = normalizeOwnerInput(repoOwner);
     const repo = normalizeRepoInput(repoName, owner);
 
     if (!owner) {
-      setMessage("> error: owner_required");
+      setMessage("> error: Owner required");
       setVerified(false);
       return;
     }
 
     if (!repo) {
-      setMessage("> error: repository_name_required");
+      setMessage("> error: Repository name required");
       setVerified(false);
       return;
     }
@@ -271,11 +302,11 @@ export function ProjectSettings({
         resolveBranchSelection(currentBranch, branch, result.branches ?? [])
       );
 
-      setMessage("> repo_verified: ok");
+      setMessage("> Repository verified ✓");
     } else {
       setVerified(false);
       setBranches([]);
-      setMessage(`> error: ${result.error ?? "verification_failed"}`);
+      setMessage(`> error: ${result.error ?? "Verification failed — try again"}`);
     }
 
     setVerifying(false);
@@ -305,11 +336,11 @@ export function ProjectSettings({
           resolveBranchSelection(currentBranch, branch, result.branches ?? [])
         );
 
-        setMessage("> repo_verified: ok");
+        setMessage("> Repository verified ✓");
       } else {
         setVerified(false);
         setBranches([]);
-        setMessage(`> error: ${result.error ?? "verification_failed"}`);
+        setMessage(`> error: ${result.error ?? "Verification failed — try again"}`);
       }
 
       setVerifying(false);
@@ -386,12 +417,12 @@ export function ProjectSettings({
 
   const handleSave = async () => {
     if (!verified) {
-      setMessage("> error: verify_repo_before_linking");
+      setMessage("> error: Verify the repo before linking");
       return;
     }
 
     if (!branchName) {
-      setMessage("> error: branch_required");
+      setMessage("> error: Branch required");
       return;
     }
 
@@ -401,13 +432,13 @@ export function ProjectSettings({
       repoName,
       branch: branchName,
     });
-    setMessage(result.success ? "> github_linked: ok" : `> error: ${result.error}`);
+    setMessage(result.success ? "> Repository linked ✓" : `> error: ${result.error}`);
     setSaving(false);
   };
 
   const handleInvite = async () => {
     if (!selectedInvitee) {
-      setInviteMessage("> error: select_a_member");
+      setInviteMessage("> error: Select a member");
       return;
     }
 
@@ -416,17 +447,17 @@ export function ProjectSettings({
     const result = await inviteToProjectAction(projectId, selectedInvitee);
     if (result.success) {
       setSelectedInvitee("");
-      setInviteMessage("> invite_sent: ok");
+      setInviteMessage("> Invite sent ✓");
       router.refresh();
     } else {
-      setInviteMessage(`> error: ${result.error ?? "invite_failed"}`);
+      setInviteMessage(`> error: ${result.error ?? "Invite failed — try again"}`);
     }
     setInviting(false);
   };
 
   const handleEmailInvite = async () => {
     if (!inviteEmail.trim()) {
-      setInviteMessage("> error: email_required");
+      setInviteMessage("> error: Email required");
       return;
     }
 
@@ -438,10 +469,10 @@ export function ProjectSettings({
     );
     if (result.success) {
       setInviteEmail("");
-      setInviteMessage("> invite_email_sent: ok");
+      setInviteMessage("> Invite sent ✓");
       router.refresh();
     } else {
-      setInviteMessage(`> error: ${result.error ?? "invite_failed"}`);
+      setInviteMessage(`> error: ${result.error ?? "Invite failed — try again"}`);
     }
     setInviting(false);
   };
@@ -450,100 +481,54 @@ export function ProjectSettings({
     <div className="space-y-4">
       {canManageMembers && (
         <SettingsWindow title="members.config">
-          <div className="rounded-md border border-primary/30 bg-accent px-4 py-3 shadow-[0_0_16px_rgba(0,255,65,0.08)]">
-            <p className="font-mono text-[11px] leading-relaxed text-primary/90">
-              Invite teammates from your organization, or send an email invite
-              for collaborators outside your org.
-            </p>
-          </div>
+          <p className="font-mono text-xs leading-relaxed text-muted-foreground">
+            Invite teammates from your organization, or send an email invite
+            for collaborators outside your org.
+          </p>
 
-          <details className="group rounded border border-primary/20 bg-black-light/10">
-            <summary className="flex cursor-pointer list-none items-center gap-1.5 px-3 py-2 font-mono text-xs text-primary [&::-webkit-details-marker]:hidden">
-              <ChevronDown
-                aria-hidden="true"
-                className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
-              />
-              --current_members
-              <span className="text-muted-foreground">
-                ({displayedMembers.length})
-              </span>
-            </summary>
-            <ul className="space-y-1 border-t border-primary/15 px-3 py-2">
-              {displayedMembers.map((member) => (
-                <li
-                  key={member.id}
-                  className="font-mono text-xs text-muted-foreground"
+          <div className="space-y-3 border-t border-primary/15 pt-3">
+            <span className="font-mono text-sm font-medium tracking-wide text-primary">
+              --invite
+            </span>
+
+            <div
+              className="grid grid-cols-2 rounded border border-primary/20 bg-black-light/20 p-0.5"
+              role="group"
+              aria-label="Invite method"
+            >
+              {(
+                [
+                  { id: "organization", label: "From org" },
+                  { id: "email", label: "By email" },
+                ] as const
+              ).map(({ id, label }) => (
+                <button
+                  key={id}
+                  type="button"
+                  aria-pressed={inviteMode === id}
+                  onClick={() => {
+                    setInviteMode(id);
+                    setInviteMessage("");
+                  }}
+                  className={cn(
+                    "rounded px-2 py-1 font-mono text-xs transition-colors",
+                    inviteMode === id
+                      ? "border border-primary/30 bg-primary/15 text-primary"
+                      : "border border-transparent text-muted-foreground hover:text-primary"
+                  )}
                 >
-                  &gt; {member.name}
-                  {member.isCreator ? " (creator)" : ""}
-                </li>
+                  {label}
+                </button>
               ))}
-            </ul>
-          </details>
-
-          {pendingInvites.length > 0 && (
-            <div>
-              <Label>--pending_invites</Label>
-              <ul className="mt-2 space-y-1">
-                {pendingInvites.map((invite) => (
-                  <li
-                    key={invite.id}
-                    className="font-mono text-xs text-muted-foreground"
-                  >
-                    &gt;{" "}
-                    {resolvePendingInviteDisplayName(
-                      invite.inviteeClerkId,
-                      invite.inviteeEmail,
-                      memberNameById
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <div className="space-y-3 rounded border border-primary/20 bg-black-light/10 p-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <Label>--invite</Label>
-              <div
-                className="inline-flex rounded border border-primary/20 bg-black-light/20 p-0.5"
-                role="group"
-                aria-label="Invite method"
-              >
-                {(
-                  [
-                    { id: "organization", label: "organization" },
-                    { id: "email", label: "email" },
-                  ] as const
-                ).map(({ id, label }) => (
-                  <button
-                    key={id}
-                    type="button"
-                    aria-pressed={inviteMode === id}
-                    onClick={() => {
-                      setInviteMode(id);
-                      setInviteMessage("");
-                    }}
-                    className={cn(
-                      "rounded px-2 py-0.5 font-mono text-[10px] transition-colors",
-                      inviteMode === id
-                        ? "border border-primary/30 bg-primary/15 text-primary"
-                        : "border border-transparent text-muted-foreground hover:text-primary"
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
             </div>
 
             {inviteMode === "organization" ? (
               <div className="space-y-1">
                 <Label
                   htmlFor={`invite-member-${projectId}`}
-                  className="text-xs font-normal text-muted-foreground"
+                  className="text-xs font-normal text-foreground"
                 >
-                  org_member
+                  Org member
                 </Label>
                 <Select
                   value={selectedInvitee || undefined}
@@ -575,8 +560,10 @@ export function ProjectSettings({
                     role="status"
                     aria-live="polite"
                     className={cn(
-                      "font-mono text-xs text-muted-foreground",
-                      inviteEmptyReason === "solo_org" && "text-primary/80"
+                      "font-mono text-xs",
+                      inviteEmptyReason === "solo_org"
+                        ? "text-primary/90"
+                        : "text-foreground/80"
                     )}
                   >
                     {inviteEmptyHelperText}
@@ -587,9 +574,9 @@ export function ProjectSettings({
               <div className="space-y-1">
                 <Label
                   htmlFor="invite-email"
-                  className="text-xs font-normal text-muted-foreground"
+                  className="text-xs font-normal text-foreground"
                 >
-                  email
+                  Email
                 </Label>
                 <Input
                   id="invite-email"
@@ -598,8 +585,8 @@ export function ProjectSettings({
                   onChange={(e) => setInviteEmail(e.target.value)}
                   placeholder="teammate@example.com"
                 />
-                <p className="font-mono text-xs text-muted-foreground">
-                  &gt; sends_organization_and_project_invite_via_email
+                <p className="font-mono text-xs text-foreground/80">
+                  &gt; Sends an organization and project invite via email
                 </p>
               </div>
             )}
@@ -619,13 +606,15 @@ export function ProjectSettings({
                   onClick={handleEmailInvite}
                   disabled={inviting || !inviteEmail.trim()}
                 >
-                  {inviting ? "inviting…" : "invite_by_email()"}
+                  {inviting ? "inviting…" : "invite()"}
                 </Button>
               )}
             </div>
 
             {inviteMessage && (
               <p
+                role="status"
+                aria-live="polite"
                 className={cn(
                   "font-mono text-xs",
                   inviteMessage.startsWith("> error:")
@@ -637,118 +626,197 @@ export function ProjectSettings({
               </p>
             )}
           </div>
+
+          <details className="group rounded border border-primary/20 bg-black-light/10">
+            <summary className="flex cursor-pointer list-none items-center gap-1.5 px-3 py-2 font-mono text-xs text-primary [&::-webkit-details-marker]:hidden">
+              <ChevronDown
+                aria-hidden="true"
+                className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
+              />
+              --current_members
+              <span className="text-muted-foreground">
+                ({displayedMembers.length})
+              </span>
+            </summary>
+            <ul className="space-y-1.5 border-t border-primary/15 px-3 py-2">
+              {displayedMembers.map((member) => (
+                <li
+                  key={member.id}
+                  className="flex items-center gap-2 font-mono text-xs"
+                >
+                  <span className="text-foreground">&gt; {member.name}</span>
+                  {member.isCreator && (
+                    <span className="rounded border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-xs text-primary/80">
+                      creator
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </details>
+
+          {pendingInvites.length > 0 && (
+            <div>
+              <Label className="text-foreground">--pending_invites</Label>
+              <ul className="mt-2 space-y-1.5">
+                {pendingInvites.map((invite) => (
+                  <li
+                    key={invite.id}
+                    className="flex items-center justify-between gap-2 font-mono text-xs"
+                  >
+                    <span className="text-muted-foreground">
+                      &gt;{" "}
+                      {resolvePendingInviteDisplayName(
+                        invite.inviteeClerkId,
+                        invite.inviteeEmail,
+                        memberNameById
+                      )}
+                    </span>
+                    <span className="shrink-0 text-xs text-primary/70">
+                      {formatPendingInviteStatus(invite.createdAt)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
         </SettingsWindow>
       )}
 
       <SettingsWindow title="github.config">
-        <p className="rounded border border-primary/25 bg-black-light/30 px-3 py-2 font-mono text-[11px] leading-relaxed text-muted-foreground">
+        <p className="font-mono text-xs leading-relaxed text-muted-foreground">
           Set the repository owner and name, verify the repo, choose a branch,
           then link the repo to receive GitHub push and pull request events.
         </p>
 
-        <div>
-        <Label htmlFor="owner">--owner</Label>
-        <Input
-          id="owner"
-          value={repoOwner}
-          onChange={(e) => handleOwnerChange(e.target.value)}
-          placeholder={githubUsername || "github-username"}
-          className="mt-1"
-        />
-      </div>
+        <div className="space-y-3 border-t border-primary/15 pt-3">
+          <span className="font-mono text-sm font-medium tracking-wide text-primary">
+            --repository
+          </span>
 
-      <div>
-        <Label htmlFor="repo">--repo</Label>
-        <SearchableSelect
-          id="repo"
-          value={repoName}
-          options={ownerRepos}
-          onChange={handleRepoChange}
-          placeholder={
-            normalizeOwnerInput(repoOwner)
-              ? loadingRepos
-                ? "loading_repos…"
-                : ownerRepos.length > 0
-                  ? "select_repo"
-                  : "no_repos_for_owner"
-              : "enter_owner_first"
-          }
-          searchPlaceholder="search_repos…"
-          emptyMessage="no_matching_repos"
-          disabled={!normalizeOwnerInput(repoOwner)}
-          loading={loadingRepos}
-          className="mt-1"
-        />
-        <p className="font-mono text-xs text-muted-foreground mt-1">
-          &gt; tracks {repoOwner || "owner"}/{repoName || "repo"}
-        </p>
-      </div>
-
-      <div>
-        <Label htmlFor="branch">--branch</Label>
-        <Select
-          value={branchName || undefined}
-          onValueChange={setBranchName}
-          disabled={!verified}
-        >
-          <SelectTrigger id="branch" className="mt-1">
-            <SelectValue
-              placeholder={
-                verified ? "select_branch" : "verify_repo_to_load_branches"
-              }
+          <div className="space-y-1">
+            <Label
+              htmlFor="owner"
+              className="text-xs font-normal text-foreground"
+            >
+              Owner
+            </Label>
+            <Input
+              id="owner"
+              value={repoOwner}
+              onChange={(e) => handleOwnerChange(e.target.value)}
+              placeholder={githubUsername || "GitHub username"}
             />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_BRANCHES}>all_branches</SelectItem>
-            {branches.map((name) => (
-              <SelectItem key={name} value={name}>
-                {name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {verified && isAllBranches(branchName) && (
-          <p className="font-mono text-xs text-muted-foreground mt-1">
-            &gt; tracks activity across all branches in this repo
-          </p>
-        )}
-        {verified && !isAllBranches(branchName) && (
-          <p className="font-mono text-xs text-muted-foreground mt-1">
-            &gt; tracks {branchLabel(branchName)} only
-          </p>
-        )}
-      </div>
+          </div>
 
-      <div className="flex flex-wrap gap-2">
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={handleVerify}
-          disabled={verifying || !repoOwner.trim() || !repoName.trim()}
-        >
-          {verifying ? "verifying…" : "verify_repo()"}
-        </Button>
-        <Button
-          size="sm"
-          onClick={handleSave}
-          disabled={saving || !verified || !branchName}
-        >
-          {saving ? "linking…" : "link_repo()"}
-        </Button>
-      </div>
+          <div className="space-y-1">
+            <Label
+              htmlFor="repo"
+              className="text-xs font-normal text-foreground"
+            >
+              Repository
+            </Label>
+            <SearchableSelect
+              id="repo"
+              value={repoName}
+              options={ownerRepos}
+              onChange={handleRepoChange}
+              placeholder={repoSelectPlaceholder}
+              searchPlaceholder="Search repos…"
+              emptyMessage="No matching repos"
+              disabled={!normalizeOwnerInput(repoOwner)}
+              loading={loadingRepos}
+              aria-describedby={githubRepoHelperId}
+            />
+            <p
+              id={githubRepoHelperId}
+              className="font-mono text-xs text-foreground/80"
+            >
+              &gt; Tracks {repoOwner || "owner"}/{repoName || "repo"}
+            </p>
+          </div>
 
-      {message && (
-        <p
-          className={cn(
-            "font-mono text-xs",
-            message.startsWith("> error:")
-              ? "text-destructive"
-              : "text-green-dark"
+          <div className="space-y-1">
+            <Label
+              htmlFor="branch"
+              className="text-xs font-normal text-foreground"
+            >
+              Branch
+            </Label>
+            <Select
+              value={branchName || undefined}
+              onValueChange={setBranchName}
+              disabled={!verified}
+            >
+              <SelectTrigger
+                id="branch"
+                aria-describedby={
+                  branchHelperText ? githubBranchHelperId : undefined
+                }
+              >
+                <SelectValue
+                  placeholder={
+                    verified
+                      ? "Select a branch"
+                      : "Verify the repo to load branches"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_BRANCHES}>All branches</SelectItem>
+                {branches.map((name) => (
+                  <SelectItem key={name} value={name}>
+                    {name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {branchHelperText && (
+              <p
+                id={githubBranchHelperId}
+                role="status"
+                aria-live="polite"
+                className="font-mono text-xs text-foreground/80"
+              >
+                {branchHelperText}
+              </p>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleVerify}
+              disabled={verifying || !repoOwner.trim() || !repoName.trim()}
+            >
+              {verifying ? "verifying…" : "verify_repo()"}
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSave}
+              disabled={saving || !verified || !branchName}
+            >
+              {saving ? "linking…" : "link_repo()"}
+            </Button>
+          </div>
+
+          {message && (
+            <p
+              role="status"
+              aria-live="polite"
+              className={cn(
+                "font-mono text-xs",
+                message.startsWith("> error:")
+                  ? "text-destructive"
+                  : "text-green-dark"
+              )}
+            >
+              {message}
+            </p>
           )}
-        >
-          {message}
-        </p>
-      )}
+        </div>
       </SettingsWindow>
     </div>
   );

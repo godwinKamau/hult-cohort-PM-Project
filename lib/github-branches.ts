@@ -6,5 +6,5 @@ export function isAllBranches(branch?: string | null): boolean {
 }
 
 export function branchLabel(branch?: string | null): string {
-  return isAllBranches(branch) ? "all_branches" : branch!.trim();
+  return isAllBranches(branch) ? "All branches" : branch!.trim();
 }

@@ -15,6 +15,7 @@ interface SearchableSelectProps {
   disabled?: boolean;
   loading?: boolean;
   className?: string;
+  "aria-describedby"?: string;
 }
 
 export function SearchableSelect({
@@ -28,6 +29,7 @@ export function SearchableSelect({
   disabled = false,
   loading = false,
   className,
+  "aria-describedby": ariaDescribedBy,
 }: SearchableSelectProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -61,6 +63,7 @@ export function SearchableSelect({
         id={id}
         type="button"
         disabled={disabled || loading}
+        aria-describedby={ariaDescribedBy}
         onClick={() => {
           if (disabled || loading) return;
           setOpen((current) => !current);

@@ -39,6 +39,7 @@ import {
 } from "@/actions/tickets";
 import { ForbiddenState } from "@/components/states/ForbiddenState";
 import { useTerminalToast } from "@/components/ui/terminal-toast";
+import { useSetHeaderProjectName } from "@/components/shell/HeaderPathContext";
 
 interface ProjectPageClientProps {
   project: ProjectDTO | null;
@@ -126,6 +127,7 @@ export function ProjectPageClient({
   const router = useRouter();
   const searchParams = useSearchParams();
   const { showToast } = useTerminalToast();
+  useSetHeaderProjectName(project?.name);
   const [statusChangingId, setStatusChangingId] = useState<string | null>(null);
   const [settingsRequested, setSettingsRequested] = useState(false);
 

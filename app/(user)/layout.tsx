@@ -15,7 +15,7 @@ export default async function UserLayout({
 
   return (
     <div className="min-h-screen flex flex-col">
-      <AppHeader orgSlug="invites" />
+      <AppHeader />
       <main className="flex-1 pt-28 pb-8 px-4 container mx-auto">{children}</main>
     </div>
   );

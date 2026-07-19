@@ -36,13 +36,13 @@ export function getInviteEmptyReason(
 export function getInviteEmptyPlaceholder(reason: InviteEmptyReason): string {
   switch (reason) {
     case "solo_org":
-      return "only_org_member";
+      return "You're the only org member";
     case "all_added_or_pending":
-      return "all_members_added_or_pending";
+      return "All members added or pending";
     case "roster_unavailable":
-      return "org_roster_unavailable";
+      return "Org roster unavailable";
     default:
-      return "select_org_member";
+      return "Select a member";
   }
 }
 
@@ -52,16 +52,37 @@ export function getInviteEmptyHelperText(
 ): string {
   switch (reason) {
     case "solo_org":
-      return "> no_other_org_members — use invite_by_email() below to add teammates";
+      return "> No other org members — switch to By email to invite teammates";
     case "all_added_or_pending":
       return pendingInviteCount > 0
-        ? `> all_org_members_on_project — ${pendingInviteCount} invite(s)_pending`
-        : "> all_org_members_already_have_project_access";
+        ? `> Everyone in your org is on this project — ${pendingInviteCount} invite(s) still pending`
+        : "> Everyone in your org already has project access";
     case "roster_unavailable":
-      return "> could_not_load_org_members — refresh_or_use_invite_by_email()";
+      return "> Could not load org members — refresh or use By email";
     default:
       return "";
   }
+}
+
+export function formatPendingInviteStatus(createdAt: string): string {
+  const created = new Date(createdAt);
+  if (Number.isNaN(created.getTime())) {
+    return "pending";
+  }
+
+  const diffDays = Math.floor(
+    (Date.now() - created.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  if (diffDays <= 0) {
+    return "pending";
+  }
+
+  if (diffDays === 1) {
+    return "pending · 1d ago";
+  }
+
+  return `pending · ${diffDays}d ago`;
 }
 
 export function resolvePendingInviteDisplayName(
