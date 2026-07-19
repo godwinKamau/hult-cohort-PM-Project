@@ -45,6 +45,10 @@ function buildBreadcrumb(
     return [{ type: "current", label: "~/projects" }];
   }
 
+  if (segments[0] === "avatar") {
+    return [{ type: "current", label: "~/avatar" }];
+  }
+
   return [{ type: "current", label: "~" }];
 }
 
@@ -119,6 +123,7 @@ export function AppHeader() {
 
   const navItems = [
     { href: "/dashboard", label: "all projects" },
+    { href: "/avatar", label: "avatar" },
   ];
 
   return (
@@ -135,7 +140,9 @@ export function AppHeader() {
               <Button
                 key={item.href}
                 variant={
-                  pathname === "/dashboard" || pathname.startsWith("/dashboard/")
+                  pathname === item.href ||
+                  (item.href === "/dashboard" &&
+                    pathname.startsWith("/dashboard/"))
                     ? "default"
                     : "ghost"
                 }
@@ -196,7 +203,9 @@ export function AppHeader() {
               <Button
                 key={item.href}
                 variant={
-                  pathname === "/dashboard" || pathname.startsWith("/dashboard/")
+                  pathname === item.href ||
+                  (item.href === "/dashboard" &&
+                    pathname.startsWith("/dashboard/"))
                     ? "default"
                     : "ghost"
                 }

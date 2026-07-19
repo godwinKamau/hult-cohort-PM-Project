@@ -4,6 +4,7 @@ import {
   verifyGithubSignature,
   parsePushPayload,
   parsePRPayload,
+  isSignificantPrAction,
   type GithubPushPayload,
   type GithubPRPayload,
 } from "@/lib/github";
@@ -49,6 +50,15 @@ export async function POST(req: Request) {
       ? parsePushPayload(payload as GithubPushPayload)
       : parsePRPayload(payload as GithubPRPayload);
 
+  if (
+    event === "pull_request" &&
+    !isSignificantPrAction(
+      "prAction" in parsed ? parsed.prAction : undefined
+    )
+  ) {
+    return NextResponse.json({ ok: true, skipped: "ignored_pr_action" });
+  }
+
   const project = await projectRepo.findProjectByRepo(
     parsed.repoFullName,
     event === "push" ? parsed.branch : undefined
@@ -63,34 +73,51 @@ export async function POST(req: Request) {
     parsed.actorGithubLogin
   );
 
-  const notification = await notificationRepo.createNotification({
-    organizationId: project.organizationId,
-    projectId: project.id,
-    type: event === "push" ? "push" : "pull_request",
-    title: parsed.title,
-    meta: {
-      repo: parsed.repoFullName,
-      branch: parsed.branch,
-      actorGithubLogin: parsed.actorGithubLogin,
-      commitCount: "commitCount" in parsed ? parsed.commitCount : undefined,
-      commitMessage: "commitMessage" in parsed ? parsed.commitMessage : undefined,
-      prNumber: "prNumber" in parsed ? parsed.prNumber : undefined,
-      prAction: "prAction" in parsed ? parsed.prAction : undefined,
-      url: parsed.url,
-    },
-    pusherClerkId: pusherClerkId ?? undefined,
-    deliveryId,
-  });
+  const notificationMeta = {
+    repo: parsed.repoFullName,
+    branch: parsed.branch,
+    actorGithubLogin: parsed.actorGithubLogin,
+    commitCount: "commitCount" in parsed ? parsed.commitCount : undefined,
+    commitMessage: "commitMessage" in parsed ? parsed.commitMessage : undefined,
+    prNumber: "prNumber" in parsed ? parsed.prNumber : undefined,
+    prAction: "prAction" in parsed ? parsed.prAction : undefined,
+    url: parsed.url,
+  };
+
+  const notification =
+    event === "pull_request"
+      ? await notificationRepo.createPullRequestNotification({
+          organizationId: project.organizationId,
+          projectId: project.id,
+          type: "pull_request",
+          title: parsed.title,
+          meta: notificationMeta,
+          pusherClerkId: pusherClerkId ?? undefined,
+          deliveryId,
+        })
+      : await notificationRepo.createNotification({
+          organizationId: project.organizationId,
+          projectId: project.id,
+          type: "push",
+          title: parsed.title,
+          meta: notificationMeta,
+          pusherClerkId: pusherClerkId ?? undefined,
+          deliveryId,
+        });
 
   if (!notification) {
     return NextResponse.json({ ok: true, skipped: "duplicate" });
   }
 
   try {
-    await notificationRepo.enqueueBannerItem(project.organizationId, {
-      ...notification,
-      reacted: false,
-    });
+    if (event === "pull_request") {
+      await notificationRepo.rebuildBannerCache(project.organizationId);
+    } else {
+      await notificationRepo.enqueueBannerItem(project.organizationId, {
+        ...notification,
+        reacted: false,
+      });
+    }
   } catch (err) {
     console.error("Redis enqueue failed:", err);
   }

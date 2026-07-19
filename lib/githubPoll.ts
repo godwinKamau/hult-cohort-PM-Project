@@ -1,4 +1,10 @@
-import { ALL_BRANCHES, enrichPushEvent, listRepoEvents, parseRepoEvent } from "@/lib/github";
+import {
+  ALL_BRANCHES,
+  enrichPullRequestEvent,
+  enrichPushEvent,
+  listRepoEvents,
+  parseRepoEvent,
+} from "@/lib/github";
 import {
   getRedis,
   POLL_LOOKBACK_MS,
@@ -86,40 +92,64 @@ async function pollRepoEvents(
 
     if (parsed.type === "push") {
       parsed = await enrichPushEvent(token, parts.owner, parts.repo, parsed);
+    } else if (parsed.type === "pull_request") {
+      parsed = await enrichPullRequestEvent(
+        token,
+        parts.owner,
+        parts.repo,
+        parsed
+      );
     }
 
     const pusherClerkId = await notificationRepo.findUserByGithubUsername(
       parsed.actorGithubLogin
     );
 
-    const notification = await notificationRepo.createNotification({
-      organizationId: orgId,
-      projectId: target.projectId,
-      type: parsed.type,
-      title: parsed.title,
-      meta: {
-        repo: parsed.repoFullName,
-        branch: parsed.branch,
-        actorGithubLogin: parsed.actorGithubLogin,
-        commitCount: parsed.commitCount,
-        commitMessage: parsed.commitMessage,
-        prNumber: parsed.prNumber,
-        prAction: parsed.prAction,
-        url: parsed.url,
-      },
-      pusherClerkId: pusherClerkId ?? undefined,
-      deliveryId: `gh:${parsed.eventId}`,
-    });
+    const meta = {
+      repo: parsed.repoFullName,
+      branch: parsed.branch,
+      actorGithubLogin: parsed.actorGithubLogin,
+      commitCount: parsed.commitCount,
+      commitMessage: parsed.commitMessage,
+      prNumber: parsed.prNumber,
+      prAction: parsed.prAction,
+      url: parsed.url,
+    };
+
+    const notification =
+      parsed.type === "pull_request"
+        ? await notificationRepo.createPullRequestNotification({
+            organizationId: orgId,
+            projectId: target.projectId,
+            type: "pull_request",
+            title: parsed.title,
+            meta,
+            pusherClerkId: pusherClerkId ?? undefined,
+            deliveryId: `gh:${parsed.eventId}`,
+          })
+        : await notificationRepo.createNotification({
+            organizationId: orgId,
+            projectId: target.projectId,
+            type: "push",
+            title: parsed.title,
+            meta,
+            pusherClerkId: pusherClerkId ?? undefined,
+            deliveryId: `gh:${parsed.eventId}`,
+          });
 
     if (!notification) {
       continue;
     }
 
     try {
-      await notificationRepo.enqueueBannerItem(orgId, {
-        ...notification,
-        reacted: false,
-      });
+      if (parsed.type === "pull_request") {
+        await notificationRepo.rebuildBannerCache(orgId);
+      } else {
+        await notificationRepo.enqueueBannerItem(orgId, {
+          ...notification,
+          reacted: false,
+        });
+      }
     } catch (err) {
       console.error("Redis enqueue failed during poll:", err);
     }

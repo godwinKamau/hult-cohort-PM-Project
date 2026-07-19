@@ -12,6 +12,8 @@ const NotificationMetaSchema = new Schema(
     url: { type: String },
     reactorClerkId: { type: String },
     reactorName: { type: String },
+    reactorAvatarGrid: { type: String },
+    reactorAvatarColor: { type: String },
     originalNotificationId: { type: String },
   },
   { _id: false }

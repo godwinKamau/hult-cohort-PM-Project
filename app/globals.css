@@ -172,6 +172,30 @@
   will-change: auto;
 }
 
+@keyframes avatar-drift {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  100% {
+    transform: translate(var(--drift-x, 40px), var(--drift-y, -120px))
+      rotate(var(--drift-rotate, 15deg));
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .floating-avatar {
+    animation: avatar-drift var(--float-duration, 24s) ease-in-out infinite
+      alternate;
+    will-change: transform;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floating-avatar {
+    animation: none;
+  }
+}
+
 /* Clerk auth modals — ensure readable contrast on dark surfaces */
 :root {
   --clerk-color-foreground: #00ff41;

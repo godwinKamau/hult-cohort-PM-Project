@@ -9,10 +9,78 @@ import { serializeDoc } from "@/lib/serialize";
 import type { BannerItemDTO, NotificationDTO } from "@/lib/types";
 import { Notification } from "@/models";
 
-export async function createNotification(
-  data: Omit<NotificationDTO, "id" | "likeCount" | "createdAt"> & {
-    deliveryId?: string;
+type NotificationInput = Omit<NotificationDTO, "id" | "likeCount" | "createdAt"> & {
+  deliveryId?: string;
+};
+
+const PR_ACTION_PRIORITY: Record<string, number> = {
+  opened: 1,
+  ready_for_review: 2,
+  reopened: 3,
+  closed: 4,
+  merged: 5,
+};
+
+function prActionPriority(action?: string | null): number {
+  if (!action) return 0;
+  return PR_ACTION_PRIORITY[action] ?? 0;
+}
+
+function pullRequestKey(repo?: string, prNumber?: number): string | null {
+  if (!repo || prNumber == null) return null;
+  return `${repo.toLowerCase()}#${prNumber}`;
+}
+
+/** Keep one banner item per PR, preferring merged/closed over opened. */
+export function collapseNotificationsForBanner(
+  notifications: NotificationDTO[]
+): NotificationDTO[] {
+  const bestByPr = new Map<string, NotificationDTO>();
+  const result: NotificationDTO[] = [];
+
+  for (const notification of notifications) {
+    if (notification.type !== "pull_request") {
+      result.push(notification);
+      continue;
+    }
+
+    const key = pullRequestKey(
+      notification.meta.repo,
+      notification.meta.prNumber
+    );
+    if (!key) {
+      result.push(notification);
+      continue;
+    }
+
+    const existing = bestByPr.get(key);
+    if (!existing) {
+      bestByPr.set(key, notification);
+      continue;
+    }
+
+    const existingPriority = prActionPriority(existing.meta.prAction);
+    const nextPriority = prActionPriority(notification.meta.prAction);
+
+    if (
+      nextPriority > existingPriority ||
+      (nextPriority === existingPriority &&
+        notification.createdAt > existing.createdAt)
+    ) {
+      bestByPr.set(key, notification);
+    }
   }
+
+  const collapsedPrs = [...bestByPr.values()];
+  const pushes = result;
+  return [...pushes, ...collapsedPrs].sort(
+    (left, right) =>
+      new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+  );
+}
+
+export async function createNotification(
+  data: NotificationInput
 ): Promise<NotificationDTO | null> {
   await connectDB();
   try {
@@ -41,6 +109,57 @@ export async function createNotification(
   }
 }
 
+/**
+ * Create a PR banner notification, skipping if a higher-priority action
+ * already exists, and removing lower-priority ones (e.g. opened → merged).
+ */
+export async function createPullRequestNotification(
+  data: NotificationInput
+): Promise<NotificationDTO | null> {
+  await connectDB();
+
+  const repo = data.meta.repo;
+  const prNumber = data.meta.prNumber;
+  const action = data.meta.prAction;
+  const newPriority = prActionPriority(action);
+
+  if (!repo || prNumber == null || !action) {
+    return createNotification(data);
+  }
+
+  const existing = await Notification.find({
+    organizationId: data.organizationId,
+    type: "pull_request",
+    "meta.repo": repo,
+    "meta.prNumber": prNumber,
+    createdAt: { $gte: new Date(Date.now() - BANNER_TTL_MS) },
+  }).lean();
+
+  const maxExistingPriority = existing.reduce(
+    (max, doc) => Math.max(max, prActionPriority(doc.meta?.prAction)),
+    0
+  );
+
+  if (maxExistingPriority >= newPriority) {
+    return null;
+  }
+
+  const created = await createNotification(data);
+  if (!created) {
+    return null;
+  }
+
+  const obsoleteIds = existing
+    .filter((doc) => prActionPriority(doc.meta?.prAction) < newPriority)
+    .map((doc) => doc._id);
+
+  if (obsoleteIds.length > 0) {
+    await Notification.deleteMany({ _id: { $in: obsoleteIds } });
+  }
+
+  return created;
+}
+
 export async function listRecentNotifications(
   orgId: string,
   limit = BANNER_MAX_ITEMS
@@ -52,9 +171,14 @@ export async function listRecentNotifications(
     createdAt: { $gte: new Date(Date.now() - BANNER_TTL_MS) },
   })
     .sort({ createdAt: -1 })
-    .limit(limit)
+    .limit(limit * 3)
     .lean();
-  return docs.map((d) => serializeDoc<NotificationDTO>(d)!);
+
+  const collapsed = collapseNotificationsForBanner(
+    docs.map((d) => serializeDoc<NotificationDTO>(d)!)
+  );
+
+  return collapsed.slice(0, limit);
 }
 
 export async function getPersonalNotifications(

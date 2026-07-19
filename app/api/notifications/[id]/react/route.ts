@@ -46,10 +46,16 @@ export async function POST(_req: Request, { params }: RouteParams) {
       await notificationRepo.createNotification({
         organizationId: orgId,
         type: "reaction",
-        title: `${reactor?.name ?? "Someone"} reacted 👍 to your push`,
+        title: `${reactor?.name ?? "Someone"} liked your push`,
         meta: {
           reactorClerkId: userId,
           reactorName: reactor?.name,
+          ...(reactor?.avatarGrid
+            ? { reactorAvatarGrid: reactor.avatarGrid }
+            : {}),
+          ...(reactor?.avatarColor
+            ? { reactorAvatarColor: reactor.avatarColor }
+            : {}),
           originalNotificationId: id,
         },
         recipientClerkId: notification.pusherClerkId,
