@@ -18,6 +18,11 @@ interface AvatarEditorProps {
   initialAvatar: PixelAvatarDTO | null;
 }
 
+interface EditorSnapshot {
+  grid: string;
+  color: string;
+}
+
 export function AvatarEditor({ initialAvatar }: AvatarEditorProps) {
   const router = useRouter();
   const { showToast } = useTerminalToast();
@@ -25,9 +30,18 @@ export function AvatarEditor({ initialAvatar }: AvatarEditorProps) {
   const [color, setColor] = useState(
     initialAvatar?.color ?? TAG_COLORS[0]
   );
+  const [history, setHistory] = useState<EditorSnapshot[]>([]);
   const [saving, setSaving] = useState(false);
   const paintModeRef = useRef<"on" | "off" | null>(null);
   const isPaintingRef = useRef(false);
+  const strokeStartRef = useRef<EditorSnapshot | null>(null);
+  const gridRef = useRef(grid);
+
+  gridRef.current = grid;
+
+  const pushHistory = useCallback((snapshot: EditorSnapshot) => {
+    setHistory((current) => [...current, snapshot]);
+  }, []);
 
   const setCell = useCallback((index: number, on: boolean) => {
     setGrid((current) => {
@@ -38,6 +52,7 @@ export function AvatarEditor({ initialAvatar }: AvatarEditorProps) {
   }, []);
 
   const handleCellPointerDown = (index: number) => {
+    strokeStartRef.current = { grid, color };
     const turningOn = grid[index] !== "1";
     paintModeRef.current = turningOn ? "on" : "off";
     isPaintingRef.current = true;
@@ -50,11 +65,38 @@ export function AvatarEditor({ initialAvatar }: AvatarEditorProps) {
   };
 
   const handlePointerUp = () => {
+    if (isPaintingRef.current && strokeStartRef.current) {
+      const start = strokeStartRef.current;
+      if (gridRef.current !== start.grid) {
+        pushHistory(start);
+      }
+    }
+
     isPaintingRef.current = false;
     paintModeRef.current = null;
+    strokeStartRef.current = null;
+  };
+
+  const handleColorChange = (tagColor: string) => {
+    if (tagColor === color) return;
+    pushHistory({ grid, color });
+    setColor(tagColor);
+  };
+
+  const handleUndo = () => {
+    setHistory((current) => {
+      if (current.length === 0) return current;
+      const next = [...current];
+      const previous = next.pop()!;
+      setGrid(previous.grid);
+      setColor(previous.color);
+      return next;
+    });
   };
 
   const handleClear = () => {
+    if (grid === emptyGrid()) return;
+    pushHistory({ grid, color });
     setGrid(emptyGrid());
   };
 
@@ -108,7 +150,7 @@ export function AvatarEditor({ initialAvatar }: AvatarEditorProps) {
               key={tagColor}
               type="button"
               aria-label={`Select color ${tagColor}`}
-              onClick={() => setColor(tagColor)}
+              onClick={() => handleColorChange(tagColor)}
               className={cn(
                 "w-8 h-8 rounded border-2 transition-all",
                 color === tagColor
@@ -163,22 +205,43 @@ export function AvatarEditor({ initialAvatar }: AvatarEditorProps) {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <Button onClick={handleSave} disabled={saving}>
+      <div className="space-y-3 pt-1">
+        <Button
+          size="lg"
+          onClick={handleSave}
+          disabled={saving}
+          className="w-full sm:w-auto min-w-[140px] cyber-border"
+        >
           save()
         </Button>
-        <Button variant="outline" onClick={handleClear} disabled={saving}>
-          clear_grid()
-        </Button>
-        {initialAvatar && (
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
-            onClick={handleClearSaved}
+            size="sm"
+            onClick={handleUndo}
+            disabled={saving || history.length === 0}
+          >
+            undo()
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleClear}
             disabled={saving}
           >
-            remove_saved()
+            clear_grid()
           </Button>
-        )}
+          {initialAvatar && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleClearSaved}
+              disabled={saving}
+            >
+              remove_saved()
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );

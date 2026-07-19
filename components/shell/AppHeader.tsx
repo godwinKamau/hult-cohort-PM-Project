@@ -9,6 +9,7 @@ import {
 } from "@clerk/nextjs";
 import { Terminal, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { organizationSwitcherAppearance } from "@/lib/clerk-appearance";
 import { InboxDropdown } from "@/components/banner/InboxDropdown";
 
 const organizationSwitcherProps = {
@@ -72,19 +73,10 @@ export function AppHeader() {
             <div className="hidden md:block">
               <InboxDropdown />
             </div>
-            <div className="hidden md:flex items-center gap-1.5">
-              <span className="font-mono text-xs text-muted-foreground shrink-0">
-                org:
-              </span>
+            <div className="hidden md:flex items-center">
               <OrganizationSwitcher
                 {...organizationSwitcherProps}
-                appearance={{
-                  elements: {
-                    rootBox: "flex",
-                    organizationSwitcherTrigger:
-                      "font-mono text-sm text-primary border border-primary/20 bg-black-light/50 px-2 py-1 rounded hover:bg-primary/10",
-                  },
-                }}
+                appearance={organizationSwitcherAppearance}
               />
             </div>
             <UserButton
@@ -137,11 +129,11 @@ export function AppHeader() {
               </span>
               <InboxDropdown />
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="font-mono text-xs text-muted-foreground shrink-0">
-                org:
-              </span>
-              <OrganizationSwitcher {...organizationSwitcherProps} />
+            <div className="pt-1">
+              <OrganizationSwitcher
+                {...organizationSwitcherProps}
+                appearance={organizationSwitcherAppearance}
+              />
             </div>
           </nav>
         )}

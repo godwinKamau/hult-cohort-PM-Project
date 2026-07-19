@@ -4,11 +4,13 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
   type ReactNode,
 } from "react";
+import { pickRandomEmote } from "@/lib/avatar";
 import type { PixelAvatarDTO } from "@/lib/types";
 import { PixelAvatar } from "./PixelAvatar";
 
@@ -16,6 +18,7 @@ const MAX_FLOATING_AVATARS = 12;
 const AVATAR_SIZE = 48;
 const VIEWPORT_PADDING = 16;
 const TOP_SAFE_ZONE = 120;
+const EMOTE_DURATION_MS = 2500;
 
 export interface FloatingAvatar extends PixelAvatarDTO {
   id: string;
@@ -25,6 +28,8 @@ export interface FloatingAvatar extends PixelAvatarDTO {
   driftY: number;
   rotate: number;
   duration: number;
+  emote: string | null;
+  emoteNonce: number;
 }
 
 function createFloatingAvatarEntry(
@@ -66,6 +71,8 @@ function createFloatingAvatarEntry(
     driftY,
     rotate: (seed * 2 - 1) * 15,
     duration: 18 + seed * 14,
+    emote: null,
+    emoteNonce: 0,
   };
 }
 
@@ -88,17 +95,73 @@ export function FloatingAvatarsProvider({
     []
   );
   const nextId = useRef(0);
+  const emoteTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
+    new Map()
+  );
 
-  const addFloatingAvatar = useCallback((avatar: PixelAvatarDTO) => {
-    const id = `float-${nextId.current++}`;
-    const entry = createFloatingAvatarEntry(avatar, id);
-
-    setFloatingAvatars((current) => {
-      const next = [...current, entry];
-      if (next.length <= MAX_FLOATING_AVATARS) return next;
-      return next.slice(next.length - MAX_FLOATING_AVATARS);
-    });
+  const clearEmote = useCallback((avatarId: string, emoteNonce: number) => {
+    setFloatingAvatars((current) =>
+      current.map((avatar) =>
+        avatar.id === avatarId && avatar.emoteNonce === emoteNonce
+          ? { ...avatar, emote: null }
+          : avatar
+      )
+    );
   }, []);
+
+  const scheduleEmoteClear = useCallback(
+    (avatarId: string, emoteNonce: number) => {
+      const existing = emoteTimeoutsRef.current.get(avatarId);
+      if (existing) clearTimeout(existing);
+
+      const timeout = setTimeout(() => {
+        clearEmote(avatarId, emoteNonce);
+        emoteTimeoutsRef.current.delete(avatarId);
+      }, EMOTE_DURATION_MS);
+
+      emoteTimeoutsRef.current.set(avatarId, timeout);
+    },
+    [clearEmote]
+  );
+
+  useEffect(() => {
+    const timeouts = emoteTimeoutsRef.current;
+    return () => {
+      for (const timeout of timeouts.values()) {
+        clearTimeout(timeout);
+      }
+      timeouts.clear();
+    };
+  }, []);
+
+  const addFloatingAvatar = useCallback(
+    (avatar: PixelAvatarDTO) => {
+      const id = `float-${nextId.current++}`;
+      const entry = createFloatingAvatarEntry(avatar, id);
+      const reactedAvatars: { id: string; emoteNonce: number }[] = [];
+
+      setFloatingAvatars((current) => {
+        const reacted = current.map((existing) => {
+          const emoteNonce = existing.emoteNonce + 1;
+          reactedAvatars.push({ id: existing.id, emoteNonce });
+          return {
+            ...existing,
+            emote: pickRandomEmote(),
+            emoteNonce,
+          };
+        });
+
+        const next = [...reacted, entry];
+        if (next.length <= MAX_FLOATING_AVATARS) return next;
+        return next.slice(next.length - MAX_FLOATING_AVATARS);
+      });
+
+      for (const reacted of reactedAvatars) {
+        scheduleEmoteClear(reacted.id, reacted.emoteNonce);
+      }
+    },
+    [scheduleEmoteClear]
+  );
 
   const value = useMemo(
     () => ({ myAvatar, addFloatingAvatar }),
@@ -132,23 +195,32 @@ function FloatingAvatarsLayer({ avatars }: { avatars: FloatingAvatar[] }) {
       aria-hidden
     >
       {avatars.map((avatar) => (
-          <div
-            key={avatar.id}
-            className="floating-avatar absolute opacity-40"
-            style={
-              {
-                left: `${avatar.left}px`,
-                bottom: `${avatar.bottom}px`,
-                "--drift-x": `${avatar.driftX}px`,
-                "--drift-y": `${avatar.driftY}px`,
-                "--drift-rotate": `${avatar.rotate}deg`,
-                "--float-duration": `${avatar.duration}s`,
-              } as React.CSSProperties
-            }
-          >
-            <PixelAvatar grid={avatar.grid} color={avatar.color} size={48} />
-          </div>
-        ))}
+        <div
+          key={avatar.id}
+          className="floating-avatar absolute opacity-40"
+          style={
+            {
+              left: `${avatar.left}px`,
+              bottom: `${avatar.bottom}px`,
+              "--drift-x": `${avatar.driftX}px`,
+              "--drift-y": `${avatar.driftY}px`,
+              "--drift-rotate": `${avatar.rotate}deg`,
+              "--float-duration": `${avatar.duration}s`,
+            } as React.CSSProperties
+          }
+        >
+          {avatar.emote && (
+            <div
+              key={avatar.emoteNonce}
+              className="avatar-speech-bubble"
+              aria-hidden
+            >
+              <span>{avatar.emote}</span>
+            </div>
+          )}
+          <PixelAvatar grid={avatar.grid} color={avatar.color} size={48} />
+        </div>
+      ))}
     </div>
   );
 }

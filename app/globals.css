@@ -196,6 +196,70 @@
   }
 }
 
+@keyframes speech-bubble-pop {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.4);
+  }
+  15% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1.1);
+  }
+  25% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+  85% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.85);
+  }
+}
+
+.avatar-speech-bubble {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 255, 65, 0.4);
+  background-color: var(--black-light);
+  font-size: 1rem;
+  line-height: 1;
+  box-shadow: 0 0 10px rgba(0, 255, 65, 0.15);
+}
+
+.avatar-speech-bubble::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: rgba(0, 255, 65, 0.4);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .avatar-speech-bubble {
+    animation: speech-bubble-pop 2.5s ease-in-out forwards;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .avatar-speech-bubble {
+    animation: none;
+  }
+}
+
 /* Clerk auth modals — ensure readable contrast on dark surfaces */
 :root {
   --clerk-color-foreground: #00ff41;
@@ -368,6 +432,16 @@
 [class*="createOrganization"] .cl-avatarImageActionsUploadText {
   color: #00ff41 !important;
   border-color: rgba(0, 255, 65, 0.4) !important;
+}
+
+/* Clerk org switcher trigger — open menu state */
+.org-switcher-trigger[aria-expanded="true"],
+[class*="organizationSwitcherTrigger"][aria-expanded="true"] {
+  background-color: rgba(0, 255, 65, 0.2) !important;
+  border-color: var(--green-matrix) !important;
+  box-shadow:
+    0 0 0 1px rgba(0, 255, 65, 0.35),
+    0 0 20px rgba(0, 255, 65, 0.25) !important;
 }
 
 /* Clerk org switcher: active org preview uses variant-specific styles that ignore token inheritance */

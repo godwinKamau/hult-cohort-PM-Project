@@ -3,6 +3,19 @@ import { TAG_COLORS } from "@/lib/types";
 export const AVATAR_GRID_SIZE = 13;
 export const AVATAR_CELLS = AVATAR_GRID_SIZE * AVATAR_GRID_SIZE;
 
+export const AVATAR_EMOTES = [
+  "😂",
+  "🔥",
+  "👀",
+  "💯",
+  "🎉",
+  "😮",
+  "🙌",
+  "👏",
+  "😎",
+  "🤯",
+] as const;
+
 const GRID_PATTERN = /^[01]{169}$/;
 
 export function emptyGrid(): string {
@@ -19,4 +32,8 @@ export function isValidAvatarColor(color: string): boolean {
 
 export function gridHasPixels(grid: string): boolean {
   return grid.includes("1");
+}
+
+export function pickRandomEmote(): string {
+  return AVATAR_EMOTES[Math.floor(Math.random() * AVATAR_EMOTES.length)];
 }

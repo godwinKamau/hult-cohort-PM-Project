@@ -92,3 +92,18 @@ export const clerkAppearance = {
     menuItem: "text-green-dark hover:bg-primary/10 hover:text-primary font-mono",
   },
 };
+
+/** Header org switcher — styled as a prominent dropdown trigger */
+export const organizationSwitcherAppearance = {
+  elements: {
+    rootBox: "flex",
+    organizationSwitcherTrigger:
+      "org-switcher-trigger group font-mono text-sm font-medium text-primary min-h-9 px-3 py-1.5 rounded border-2 border-primary/50 bg-primary/10 shadow-md shadow-primary/15 hover:bg-primary/20 hover:border-primary transition-all duration-200",
+    organizationSwitcherTriggerIcon:
+      "text-primary ml-1.5 w-4 h-4 opacity-90 group-hover:opacity-100 transition-opacity",
+    organizationPreviewTextContainer: "text-primary font-mono",
+    organizationPreviewMainIdentifier:
+      "text-primary font-mono truncate max-w-[148px]",
+    organizationPreviewAvatarBox: "border border-primary/40",
+  },
+};
