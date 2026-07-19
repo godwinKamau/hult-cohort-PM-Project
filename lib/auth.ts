@@ -278,3 +278,18 @@ export async function requireProjectMembership(
     throw new Error("You do not have access to this project");
   }
 }
+
+export async function requireProjectOwnership(
+  orgId: string,
+  projectId: string,
+  userId: string
+): Promise<void> {
+  const { getProject } = await import("@/repositories/projects");
+  const project = await getProject(orgId, projectId, userId);
+  if (!project) {
+    throw new Error("You do not have access to this project");
+  }
+  if (project.createdBy !== userId) {
+    throw new Error("Only the project owner can perform this action");
+  }
+}

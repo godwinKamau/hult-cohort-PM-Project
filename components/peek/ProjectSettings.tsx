@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
+  deleteProjectAction,
   listProjectGithubReposAction,
   setProjectGithubAction,
   verifyProjectGithubRepoAction,
@@ -33,6 +34,7 @@ import type { OrgMemberDTO, ProjectInviteDTO } from "@/lib/types";
 
 interface ProjectSettingsProps {
   projectId: string;
+  projectName: string;
   githubUsername?: string;
   repoFullName?: string;
   branch?: string;
@@ -140,6 +142,7 @@ function resolveBranchSelection(
 
 export function ProjectSettings({
   projectId,
+  projectName,
   githubUsername = "",
   repoFullName = "",
   branch = "",
@@ -177,6 +180,13 @@ export function ProjectSettings({
   );
   const [inviting, setInviting] = useState(false);
   const [inviteMessage, setInviteMessage] = useState("");
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteMessage, setDeleteMessage] = useState("");
+
+  const isOwner = projectCreatorId === currentUserId;
+  const canDeleteProject =
+    deleteConfirmation.trim() === projectName.trim() && !deleting;
 
   const canManageMembers = useMemo(
     () =>
@@ -475,6 +485,25 @@ export function ProjectSettings({
       setInviteMessage(`> error: ${result.error ?? "Invite failed — try again"}`);
     }
     setInviting(false);
+  };
+
+  const handleDeleteProject = async () => {
+    if (deleteConfirmation.trim() !== projectName.trim()) {
+      setDeleteMessage("> error: Project name does not match");
+      return;
+    }
+
+    setDeleting(true);
+    setDeleteMessage("");
+    const result = await deleteProjectAction(projectId, deleteConfirmation.trim());
+    if (result.success) {
+      router.push("/dashboard");
+      router.refresh();
+      return;
+    }
+
+    setDeleteMessage(`> error: ${result.error ?? "Delete failed — try again"}`);
+    setDeleting(false);
   };
 
   return (
@@ -818,6 +847,62 @@ export function ProjectSettings({
           )}
         </div>
       </SettingsWindow>
+
+      {isOwner && (
+        <SettingsWindow title="danger.config">
+          <p className="font-mono text-xs leading-relaxed text-muted-foreground">
+            Permanently delete this project and all of its tickets, notes,
+            invites, and notifications. This action cannot be undone.
+          </p>
+
+          <div className="space-y-3 border-t border-destructive/20 pt-3">
+            <span className="font-mono text-sm font-medium tracking-wide text-destructive">
+              --delete_project
+            </span>
+
+            <div className="space-y-1">
+              <Label
+                htmlFor={`delete-confirm-${projectId}`}
+                className="text-xs font-normal text-foreground"
+              >
+                Type <span className="text-destructive">{projectName}</span> to
+                confirm
+              </Label>
+              <Input
+                id={`delete-confirm-${projectId}`}
+                value={deleteConfirmation}
+                onChange={(e) => {
+                  setDeleteConfirmation(e.target.value);
+                  setDeleteMessage("");
+                }}
+                placeholder={projectName}
+                autoComplete="off"
+                spellCheck={false}
+                disabled={deleting}
+              />
+            </div>
+
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={handleDeleteProject}
+              disabled={!canDeleteProject}
+            >
+              {deleting ? "deleting…" : "delete_project()"}
+            </Button>
+
+            {deleteMessage && (
+              <p
+                role="status"
+                aria-live="polite"
+                className="font-mono text-xs text-destructive"
+              >
+                {deleteMessage}
+              </p>
+            )}
+          </div>
+        </SettingsWindow>
+      )}
     </div>
   );
 }

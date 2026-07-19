@@ -506,6 +506,7 @@ export function ProjectPageClient({
           <div className="mt-4">
             <ProjectSettings
               projectId={project.id}
+              projectName={project.name}
               githubUsername={githubUsername}
               repoFullName={project.github.repoFullName}
               branch={project.github.branch}
