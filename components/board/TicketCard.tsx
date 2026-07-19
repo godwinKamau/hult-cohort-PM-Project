@@ -2,24 +2,32 @@
 
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { TicketDTO, TagDTO, OrgMemberDTO } from "@/lib/types";
+import { AlignLeft, MessageSquare } from "lucide-react";
+import type { TicketDTO, TagDTO, OrgMemberDTO, TicketStatus } from "@/lib/types";
+import { formatTicketNumber } from "@/lib/ticketNumber";
 import { TagBadge } from "./TagBadge";
+import { TicketStatusSelect } from "./TicketStatusSelect";
+import { MemberAvatar } from "./MemberAvatar";
 import { cn } from "@/lib/cn";
 
 interface TicketCardProps {
   ticket: TicketDTO;
-  index: number;
   tags: TagDTO[];
   members: OrgMemberDTO[];
+  notesCount?: number;
   onClick: () => void;
+  onStatusChange?: (ticketId: string, status: TicketStatus) => Promise<boolean>;
+  statusChanging?: boolean;
 }
 
 export function TicketCard({
   ticket,
-  index,
   tags,
   members,
+  notesCount = 0,
   onClick,
+  onStatusChange,
+  statusChanging = false,
 }: TicketCardProps) {
   const {
     attributes,
@@ -37,37 +45,95 @@ export function TicketCard({
 
   const assignee = members.find((m) => m.clerkUserId === ticket.assigneeClerkId);
   const ticketTags = tags.filter((t) => ticket.tagIds.includes(t.id));
+  const hasDescription = ticket.description.trim().length > 0;
+  const showMeta = hasDescription || notesCount > 0;
+
+  const dragProps = {
+    ...listeners,
+    onClick,
+  };
 
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...listeners}
-      onClick={onClick}
       className={cn(
-        "cyber-border bg-black-light/30 border-primary/20 hover:border-primary/50 transition-all duration-300 rounded p-3 cursor-pointer group",
+        "cyber-border bg-black-light/30 border-primary/20 hover:border-primary/50 transition-all duration-300 rounded p-2.5 cursor-pointer group",
         isDragging && "opacity-50 shadow-lg shadow-primary/20"
       )}
     >
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <span className="font-mono text-xs text-primary bg-black/80 rounded px-2 py-0.5">
-          #{String(index + 1).padStart(2, "0")}
-        </span>
-        {assignee && (
-          <span className="font-mono text-xs text-muted-foreground truncate max-w-[80px]">
-            @{assignee.name.split(" ")[0]}
+      <div
+        {...dragProps}
+        className="cursor-grab active:cursor-grabbing space-y-1.5"
+      >
+        <div className="flex items-center justify-between gap-2 min-w-0">
+          <span className="shrink-0 font-mono text-[10px] text-primary bg-black/80 rounded px-1.5 py-0.5">
+            {formatTicketNumber(ticket.number)}
           </span>
-        )}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {showMeta && (
+              <div className="flex items-center gap-1.5">
+                {hasDescription && (
+                  <span
+                    title="Has description"
+                    className="inline-flex items-center text-muted-foreground"
+                  >
+                    <AlignLeft className="h-3 w-3" aria-hidden />
+                    <span className="sr-only">Has description</span>
+                  </span>
+                )}
+                {notesCount > 0 && (
+                  <span
+                    title={`${notesCount} note${notesCount === 1 ? "" : "s"}`}
+                    className="inline-flex items-center gap-0.5 font-mono text-[10px] text-muted-foreground"
+                  >
+                    <MessageSquare className="h-3 w-3" aria-hidden />
+                    {notesCount}
+                  </span>
+                )}
+              </div>
+            )}
+            {assignee && <MemberAvatar member={assignee} size="sm" />}
+          </div>
+        </div>
+
+        <h4 className="font-mono text-sm text-primary leading-snug line-clamp-2">
+          {ticket.title}
+        </h4>
       </div>
-      <h4 className="font-mono text-sm text-primary mb-2 line-clamp-2">
-        {ticket.title}
-      </h4>
-      {ticketTags.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {ticketTags.map((tag) => (
-            <TagBadge key={tag.id} tag={tag} />
-          ))}
+
+      {(ticketTags.length > 0 || onStatusChange) && (
+        <div className="mt-1.5 flex items-center gap-2 min-w-0">
+          {ticketTags.length > 0 ? (
+            <div
+              {...dragProps}
+              className="flex min-w-0 flex-1 flex-wrap gap-1 cursor-grab active:cursor-grabbing"
+            >
+              {ticketTags.map((tag) => (
+                <TagBadge
+                  key={tag.id}
+                  tag={tag}
+                  className="h-4 px-1.5 text-[10px]"
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="flex-1" />
+          )}
+          {onStatusChange && (
+            <TicketStatusSelect
+              compact
+              value={ticket.status}
+              disabled={statusChanging}
+              className="shrink-0"
+              onChange={(status) => {
+                if (status !== ticket.status) {
+                  void onStatusChange(ticket.id, status);
+                }
+              }}
+            />
+          )}
         </div>
       )}
     </div>

@@ -1,5 +1,8 @@
 import { clerkClient } from "@clerk/nextjs/server";
 import { createHmac, timingSafeEqual } from "crypto";
+import { ALL_BRANCHES, isAllBranches } from "@/lib/github-branches";
+
+export { ALL_BRANCHES, branchLabel, isAllBranches } from "@/lib/github-branches";
 
 const GITHUB_API_HEADERS = {
   Accept: "application/vnd.github+json",
@@ -100,6 +103,52 @@ export async function verifyGithubRepo(
 
   const data = (await response.json()) as { default_branch?: string };
   return { defaultBranch: data.default_branch ?? "main" };
+}
+
+export async function listGithubReposForOwner(
+  token: string,
+  owner: string
+): Promise<string[]> {
+  const normalizedOwner = normalizeGithubOwner(owner);
+  if (!normalizedOwner) return [];
+
+  const repos = new Set<string>();
+  let page = 1;
+
+  while (true) {
+    const response = await fetch(
+      `https://api.github.com/user/repos?affiliation=owner,organization_member,collaborator&sort=updated&per_page=100&page=${page}`,
+      {
+        headers: {
+          ...GITHUB_API_HEADERS,
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`GitHub API error: ${response.status}`);
+    }
+
+    const data = (await response.json()) as { name: string; owner: { login: string } }[];
+    if (!Array.isArray(data) || data.length === 0) {
+      break;
+    }
+
+    for (const repo of data) {
+      if (repo.owner.login.toLowerCase() === normalizedOwner.toLowerCase()) {
+        repos.add(repo.name);
+      }
+    }
+
+    if (data.length < 100) {
+      break;
+    }
+
+    page += 1;
+  }
+
+  return [...repos].sort((left, right) => left.localeCompare(right));
 }
 
 export async function listGithubBranches(
@@ -409,7 +458,7 @@ export function parseRepoEvent(
 
     const ref = payload.ref ?? "";
     const branch = ref.replace("refs/heads/", "");
-    if (branch !== targetBranch) {
+    if (!isAllBranches(targetBranch) && branch !== targetBranch) {
       return null;
     }
 
@@ -460,7 +509,10 @@ export function parseRepoEvent(
     };
 
     const pullRequest = payload.pull_request;
-    if (!pullRequest || pullRequest.base.ref !== targetBranch) {
+    if (
+      !pullRequest ||
+      (!isAllBranches(targetBranch) && pullRequest.base.ref !== targetBranch)
+    ) {
       return null;
     }
 

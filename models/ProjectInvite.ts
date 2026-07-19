@@ -10,7 +10,9 @@ const ProjectInviteSchema = new Schema(
       index: true,
     },
     inviterClerkId: { type: String, required: true },
-    inviteeClerkId: { type: String, required: true, index: true },
+    inviteeClerkId: { type: String, index: true },
+    inviteeEmail: { type: String, lowercase: true, trim: true, index: true },
+    clerkInvitationId: { type: String },
     status: {
       type: String,
       enum: ["pending", "accepted", "rejected"],
@@ -21,8 +23,28 @@ const ProjectInviteSchema = new Schema(
   { timestamps: true }
 );
 
-ProjectInviteSchema.index({ projectId: 1, inviteeClerkId: 1 }, { unique: true });
+ProjectInviteSchema.index(
+  { projectId: 1, inviteeClerkId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      inviteeClerkId: { $type: "string" },
+      status: "pending",
+    },
+  }
+);
+ProjectInviteSchema.index(
+  { projectId: 1, inviteeEmail: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      inviteeEmail: { $type: "string" },
+      status: "pending",
+    },
+  }
+);
 ProjectInviteSchema.index({ inviteeClerkId: 1, status: 1 });
+ProjectInviteSchema.index({ inviteeEmail: 1, status: 1 });
 
 export type IProjectInvite = InferSchemaType<typeof ProjectInviteSchema> & {
   _id: mongoose.Types.ObjectId;

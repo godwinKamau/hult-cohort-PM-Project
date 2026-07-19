@@ -96,7 +96,12 @@ export function DashboardClient({
         <EmptyState
           title="no_projects_found"
           lines={["> $ create_your_first_project"]}
-        />
+          highlight="> $ create_your_first_project"
+        >
+          <Button onClick={() => setShowForm(true)}>
+            new_project()
+          </Button>
+        </EmptyState>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {projects.map((project) => (

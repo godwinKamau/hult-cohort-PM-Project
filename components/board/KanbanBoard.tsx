@@ -21,7 +21,8 @@ import type {
 } from "@/lib/types";
 import { BoardColumn } from "./BoardColumn";
 import { TicketCard } from "./TicketCard";
-import { moveTicketAction } from "@/actions/tickets";
+import { changeTicketStatusAction, moveTicketAction } from "@/actions/tickets";
+import { useTerminalToast } from "@/components/ui/terminal-toast";
 
 const COLUMNS: TicketStatus[] = ["todo", "in_progress", "done"];
 
@@ -30,7 +31,11 @@ interface KanbanBoardProps {
   initialTickets: TicketDTO[];
   tags: TagDTO[];
   members: OrgMemberDTO[];
+  notesCountByTicketId: Map<string, number>;
+  filtersActive?: boolean;
   onTicketClick: (ticketId: string) => void;
+  onCreateTicket: (status: TicketStatus, title: string) => Promise<boolean>;
+  onStatusChange?: (ticketId: string, status: TicketStatus) => Promise<boolean>;
 }
 
 function getColumnTickets(tickets: TicketDTO[], status: TicketStatus) {
@@ -58,13 +63,22 @@ export function KanbanBoard({
   initialTickets,
   tags,
   members,
+  notesCountByTicketId,
+  filtersActive = false,
   onTicketClick,
+  onCreateTicket,
+  onStatusChange,
 }: KanbanBoardProps) {
+  const { showToast } = useTerminalToast();
   const [tickets, setTickets] = useState(initialTickets);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [statusChangingId, setStatusChangingId] = useState<string | null>(null);
 
   const ticketKey = useMemo(
-    () => initialTickets.map((t) => `${t.id}:${t.status}:${t.position}`).join("|"),
+    () =>
+      initialTickets
+        .map((t) => `${t.id}:${t.number}:${t.status}:${t.position}`)
+        .join("|"),
     [initialTickets]
   );
 
@@ -143,13 +157,62 @@ export function KanbanBoard({
 
       if (!result.success) {
         setTickets(snapshot);
+        showToast("move_failed: reverting", "error");
       }
     },
-    [tickets, projectId]
+    [tickets, projectId, showToast]
+  );
+
+  const handleStatusChange = useCallback(
+    async (ticketId: string, status: TicketStatus) => {
+      const ticket = tickets.find((t) => t.id === ticketId);
+      if (!ticket || ticket.status === status) {
+        return true;
+      }
+
+      const snapshot = [...tickets];
+      const maxPos =
+        getColumnTickets(tickets, status).reduce(
+          (max, current) => Math.max(max, current.position),
+          0
+        ) + 1000;
+
+      setStatusChangingId(ticketId);
+      setTickets((prev) =>
+        prev.map((t) =>
+          t.id === ticketId ? { ...t, status, position: maxPos } : t
+        )
+      );
+
+      let success = false;
+      if (onStatusChange) {
+        success = await onStatusChange(ticketId, status);
+      } else {
+        const result = await changeTicketStatusAction(
+          ticketId,
+          projectId,
+          status
+        );
+        success = result.success;
+        if (!result.success) {
+          showToast("move_failed: reverting", "error");
+        }
+      }
+
+      setStatusChangingId(null);
+
+      if (!success) {
+        setTickets(snapshot);
+      }
+
+      return success;
+    },
+    [onStatusChange, projectId, showToast, tickets]
   );
 
   return (
     <DndContext
+      id={`kanban-${projectId}`}
       sensors={sensors}
       collisionDetection={closestCorners}
       onDragStart={handleDragStart}
@@ -163,7 +226,12 @@ export function KanbanBoard({
             tickets={getColumnTickets(tickets, status)}
             tags={tags}
             members={members}
+            notesCountByTicketId={notesCountByTicketId}
+            filtersActive={filtersActive}
             onTicketClick={onTicketClick}
+            onCreateTicket={onCreateTicket}
+            onStatusChange={handleStatusChange}
+            statusChangingId={statusChangingId}
           />
         ))}
       </div>
@@ -171,9 +239,9 @@ export function KanbanBoard({
         {activeTicket && (
           <TicketCard
             ticket={activeTicket}
-            index={0}
             tags={tags}
             members={members}
+            notesCount={notesCountByTicketId.get(activeTicket.id) ?? 0}
             onClick={() => {}}
           />
         )}

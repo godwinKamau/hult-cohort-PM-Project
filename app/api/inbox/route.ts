@@ -1,13 +1,21 @@
 import { NextResponse } from "next/server";
-import { requireOrg } from "@/lib/auth";
+import {
+  cleanupStaleOrgInvitations,
+  getPendingOrgInvitationsForUser,
+  getUserEmail,
+  requireUser,
+} from "@/lib/auth";
 import * as notificationRepo from "@/repositories/notifications";
 import * as inviteRepo from "@/repositories/projectInvites";
 
 export async function GET() {
-  const { userId } = await requireOrg();
-  const [items, invites] = await Promise.all([
+  const userId = await requireUser();
+  const userEmail = await getUserEmail(userId);
+  await cleanupStaleOrgInvitations(userId).catch(() => {});
+  const [items, invites, orgInvites] = await Promise.all([
     notificationRepo.getPersonalNotifications(userId),
-    inviteRepo.listPendingInvitesForUser(userId),
+    inviteRepo.listPendingInvitesForUser(userId, userEmail),
+    getPendingOrgInvitationsForUser(userId),
   ]);
-  return NextResponse.json({ items, invites });
+  return NextResponse.json({ items, invites, orgInvites });
 }

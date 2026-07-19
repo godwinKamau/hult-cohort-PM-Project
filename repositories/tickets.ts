@@ -1,7 +1,7 @@
 import { connectDB } from "@/lib/db";
 import { serializeDoc } from "@/lib/serialize";
 import type { TicketDTO, TicketStatus } from "@/lib/types";
-import { Ticket } from "@/models";
+import { Project, Ticket } from "@/models";
 
 export async function listTickets(
   orgId: string,
@@ -64,11 +64,24 @@ export async function createTicket(
 ): Promise<TicketDTO> {
   await connectDB();
   const status = data.status ?? "todo";
+
+  const project = await Project.findOneAndUpdate(
+    { _id: data.projectId, organizationId: orgId },
+    { $inc: { ticketSequence: 1 } },
+    { returnDocument: "after" }
+  );
+
+  if (!project) {
+    throw new Error("Project not found");
+  }
+
+  const number = project.ticketSequence;
   const maxPos = await getMaxPosition(orgId, data.projectId, status);
 
   const doc = await Ticket.create({
     organizationId: orgId,
     projectId: data.projectId,
+    number,
     title: data.title,
     description: data.description ?? "",
     status,
@@ -113,6 +126,16 @@ export async function moveTicket(
   position: number
 ): Promise<TicketDTO | null> {
   return updateTicket(orgId, ticketId, { status, position });
+}
+
+export async function changeTicketStatus(
+  orgId: string,
+  ticketId: string,
+  projectId: string,
+  status: TicketStatus
+): Promise<TicketDTO | null> {
+  const maxPos = await getMaxPosition(orgId, projectId, status);
+  return moveTicket(orgId, ticketId, status, maxPos + 1000);
 }
 
 export async function rebalanceColumn(

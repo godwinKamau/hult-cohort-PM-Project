@@ -4,6 +4,7 @@ const TicketSchema = new Schema(
   {
     organizationId: { type: String, required: true, index: true },
     projectId: { type: Schema.Types.ObjectId, ref: "Project", required: true },
+    number: { type: Number, required: true },
     title: { type: String, required: true },
     description: { type: String, default: "" },
     status: {
@@ -21,6 +22,10 @@ const TicketSchema = new Schema(
 
 TicketSchema.index({ organizationId: 1, projectId: 1, status: 1, position: 1 });
 TicketSchema.index({ organizationId: 1, assigneeClerkId: 1 });
+TicketSchema.index(
+  { organizationId: 1, projectId: 1, number: 1 },
+  { unique: true }
+);
 
 export type ITicket = InferSchemaType<typeof TicketSchema> & {
   _id: mongoose.Types.ObjectId;

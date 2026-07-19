@@ -1,4 +1,4 @@
-import { enrichPushEvent, listRepoEvents, parseRepoEvent } from "@/lib/github";
+import { ALL_BRANCHES, enrichPushEvent, listRepoEvents, parseRepoEvent } from "@/lib/github";
 import {
   getRedis,
   POLL_LOOKBACK_MS,
@@ -140,7 +140,7 @@ export async function pollOrgGithubEvents({
     const repoFullName = project.github.repoFullName?.trim();
     if (!repoFullName) continue;
 
-    const branch = project.github.branch?.trim() || "main";
+    const branch = project.github.branch?.trim() || ALL_BRANCHES;
     const key = `${repoFullName}:${branch}`;
 
     if (!repoTargets.has(key)) {

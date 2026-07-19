@@ -32,6 +32,7 @@ const Project = mongoose.model(
       branch: String,
     },
     createdBy: String,
+    ticketSequence: { type: Number, default: 0 },
   })
 );
 
@@ -40,6 +41,7 @@ const Ticket = mongoose.model(
   new mongoose.Schema({
     organizationId: String,
     projectId: mongoose.Schema.Types.ObjectId,
+    number: Number,
     title: String,
     description: String,
     status: { type: String, enum: ["todo", "in_progress", "done"] },
@@ -73,16 +75,22 @@ const tag = await Tag.create({
   color: "#00ff41",
 });
 
-const tickets: { title: string; status: "todo" | "in_progress" | "done"; position: number }[] = [
-  { title: "Setup auth", status: "done", position: 1000 },
-  { title: "Build Kanban", status: "in_progress", position: 1000 },
-  { title: "Wire GitHub webhooks", status: "todo", position: 1000 },
+const tickets: {
+  title: string;
+  status: "todo" | "in_progress" | "done";
+  position: number;
+  number: number;
+}[] = [
+  { title: "Setup auth", status: "done", position: 1000, number: 1 },
+  { title: "Build Kanban", status: "in_progress", position: 1000, number: 2 },
+  { title: "Wire GitHub webhooks", status: "todo", position: 1000, number: 3 },
 ];
 
 for (const t of tickets) {
   await Ticket.create({
     organizationId: orgId,
     projectId: project._id,
+    number: t.number,
     title: t.title,
     description: `Seeded ticket: ${t.title}`,
     status: t.status,
@@ -92,6 +100,8 @@ for (const t of tickets) {
     createdBy: userId,
   });
 }
+
+await Project.updateOne({ _id: project._id }, { $set: { ticketSequence: 3 } });
 
 console.log(`Seeded project: ${project._id}`);
 console.log("Done.");

@@ -54,7 +54,9 @@ export interface ProjectInviteDTO {
   organizationId: string;
   projectId: string;
   inviterClerkId: string;
-  inviteeClerkId: string;
+  inviteeClerkId?: string;
+  inviteeEmail?: string;
+  clerkInvitationId?: string;
   status: ProjectInviteStatus;
   createdAt: string;
   updatedAt: string;
@@ -63,6 +65,16 @@ export interface ProjectInviteDTO {
 export interface ProjectInviteInboxDTO extends ProjectInviteDTO {
   projectName: string;
   inviterName: string;
+  organizationName: string;
+}
+
+export interface OrgInviteInboxDTO {
+  id: string;
+  organizationId: string;
+  organizationName: string;
+  emailAddress: string;
+  role: string;
+  createdAt: string;
 }
 
 export interface TagDTO {
@@ -76,6 +88,7 @@ export interface TicketDTO {
   id: string;
   organizationId: string;
   projectId: string;
+  number: number;
   title: string;
   description: string;
   status: TicketStatus;

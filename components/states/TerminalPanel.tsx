@@ -5,6 +5,8 @@ interface TerminalPanelProps {
   lines: string[];
   className?: string;
   showCursor?: boolean;
+  highlight?: string;
+  footer?: React.ReactNode;
 }
 
 export function TerminalPanel({
@@ -12,6 +14,8 @@ export function TerminalPanel({
   lines,
   className,
   showCursor = true,
+  highlight,
+  footer,
 }: TerminalPanelProps) {
   return (
     <div
@@ -30,7 +34,14 @@ export function TerminalPanel({
       </div>
       <div className="font-mono text-sm space-y-1">
         {lines.map((line, i) => (
-          <div key={i} className="text-green-dark">
+          <div
+            key={i}
+            className={cn(
+              line === highlight
+                ? "text-primary bg-primary/10 border border-primary/40 rounded px-2 py-1 shadow-[0_0_12px_rgba(0,255,65,0.15)]"
+                : "text-green-dark"
+            )}
+          >
             {line}
           </div>
         ))}
@@ -40,6 +51,11 @@ export function TerminalPanel({
           </div>
         )}
       </div>
+      {footer && (
+        <div className="mt-4 pt-4 border-t border-primary/20 flex justify-center">
+          {footer}
+        </div>
+      )}
     </div>
   );
 }

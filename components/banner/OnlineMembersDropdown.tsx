@@ -148,7 +148,7 @@ export function OnlineMembersDropdown() {
                   {member.name}
                 </span>
                 {member.githubUsername && (
-                  <span className="text-[9px] text-green-dark truncate w-full">
+                  <span className="text-xs text-green-dark truncate w-full">
                     @{member.githubUsername}
                   </span>
                 )}
