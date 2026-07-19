@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import type { BannerItemDTO } from "@/lib/types";
+import { useFloatingAvatars } from "@/components/avatar/FloatingAvatarsProvider";
+import { PixelAvatar } from "@/components/avatar/PixelAvatar";
 import { cn } from "@/lib/cn";
 
 interface ReactionButtonProps {
@@ -10,6 +12,7 @@ interface ReactionButtonProps {
 }
 
 export function ReactionButton({ notification, onToggle }: ReactionButtonProps) {
+  const { myAvatar } = useFloatingAvatars();
   const [count, setCount] = useState(notification.likeCount);
   const [reacted, setReacted] = useState(notification.reacted);
   const [loading, setLoading] = useState(false);
@@ -58,7 +61,16 @@ export function ReactionButton({ notification, onToggle }: ReactionButtonProps) 
           : "border-primary/20 text-muted-foreground hover:border-primary/50"
       )}
     >
-      👍 {count}
+      {myAvatar ? (
+        <PixelAvatar
+          grid={myAvatar.grid}
+          color={myAvatar.color}
+          size={16}
+        />
+      ) : (
+        "👍"
+      )}{" "}
+      {count}
     </button>
   );
 }

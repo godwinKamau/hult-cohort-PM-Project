@@ -391,6 +391,140 @@ export async function enrichPushEvent(
   };
 }
 
+const SIGNIFICANT_PR_ACTIONS = new Set([
+  "opened",
+  "closed",
+  "reopened",
+  "ready_for_review",
+  "merged",
+]);
+
+export function isSignificantPrAction(action?: string | null): boolean {
+  if (!action) return false;
+  return SIGNIFICANT_PR_ACTIONS.has(action);
+}
+
+function buildPrTitle(
+  prNumber: number,
+  prTitle: string | undefined,
+  action: string
+): string {
+  const safeTitle = prTitle?.trim();
+  if (safeTitle) {
+    return `PR #${prNumber}: ${safeTitle} (${action})`;
+  }
+  return `PR #${prNumber} (${action})`;
+}
+
+function resolvePrAction(
+  action: string | undefined,
+  merged?: boolean
+): string {
+  if (action === "closed" && merged) {
+    return "merged";
+  }
+  return action?.trim() || "updated";
+}
+
+async function fetchPullRequestSummary(
+  token: string,
+  owner: string,
+  repo: string,
+  prNumber: number
+): Promise<{
+  title: string;
+  htmlUrl: string;
+  headRef: string;
+  baseRef: string;
+  merged: boolean;
+} | null> {
+  const response = await fetch(
+    `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}`,
+    {
+      headers: {
+        ...GITHUB_API_HEADERS,
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const data = (await response.json()) as {
+    title?: string;
+    html_url?: string;
+    merged?: boolean;
+    head?: { ref?: string };
+    base?: { ref?: string };
+  };
+
+  if (!data.title?.trim()) {
+    return null;
+  }
+
+  return {
+    title: data.title.trim(),
+    htmlUrl:
+      data.html_url ??
+      `https://github.com/${owner}/${repo}/pull/${prNumber}`,
+    headRef: data.head?.ref ?? "",
+    baseRef: data.base?.ref ?? "",
+    merged: !!data.merged,
+  };
+}
+
+/** Events API often omits PR title; hydrate from the Pulls REST endpoint. */
+export async function enrichPullRequestEvent(
+  token: string,
+  owner: string,
+  repo: string,
+  parsed: ParsedRepoEvent
+): Promise<ParsedRepoEvent> {
+  if (parsed.type !== "pull_request" || !parsed.prNumber) {
+    return parsed;
+  }
+
+  const needsEnrichment =
+    !parsed.title ||
+    parsed.title.includes("undefined") ||
+    !parsed.url ||
+    !parsed.branch;
+
+  if (!needsEnrichment) {
+    return parsed;
+  }
+
+  const summary = await fetchPullRequestSummary(
+    token,
+    owner,
+    repo,
+    parsed.prNumber
+  );
+
+  if (!summary) {
+    return {
+      ...parsed,
+      title: buildPrTitle(
+        parsed.prNumber,
+        undefined,
+        resolvePrAction(parsed.prAction)
+      ),
+    };
+  }
+
+  const action = resolvePrAction(parsed.prAction, summary.merged);
+
+  return {
+    ...parsed,
+    branch: parsed.branch || summary.headRef,
+    url: parsed.url || summary.htmlUrl,
+    prAction: action,
+    title: buildPrTitle(parsed.prNumber, summary.title, action),
+  };
+}
+
 export async function listRepoEvents(
   token: string,
   owner: string,
@@ -499,19 +633,30 @@ export function parseRepoEvent(
   if (event.type === "PullRequestEvent") {
     const payload = event.payload as {
       action?: string;
+      number?: number;
       pull_request?: {
-        number: number;
-        title: string;
-        html_url: string;
-        head: { ref: string };
-        base: { ref: string };
+        number?: number;
+        title?: string;
+        html_url?: string;
+        merged?: boolean;
+        head?: { ref?: string };
+        base?: { ref?: string };
       };
     };
 
     const pullRequest = payload.pull_request;
+    const prNumber = pullRequest?.number ?? payload.number;
+    const action = resolvePrAction(payload.action, pullRequest?.merged);
+
+    if (!prNumber || !isSignificantPrAction(action)) {
+      return null;
+    }
+
+    const baseRef = pullRequest?.base?.ref;
     if (
-      !pullRequest ||
-      (!isAllBranches(targetBranch) && pullRequest.base.ref !== targetBranch)
+      !isAllBranches(targetBranch) &&
+      baseRef &&
+      baseRef !== targetBranch
     ) {
       return null;
     }
@@ -519,14 +664,14 @@ export function parseRepoEvent(
     return {
       type: "pull_request",
       repoFullName,
-      branch: pullRequest.head.ref,
+      branch: pullRequest?.head?.ref ?? "",
       actorGithubLogin,
       eventId,
       createdAt,
-      title: `PR #${pullRequest.number}: ${pullRequest.title} (${payload.action ?? "updated"})`,
-      prNumber: pullRequest.number,
-      prAction: payload.action,
-      url: pullRequest.html_url,
+      title: buildPrTitle(prNumber, pullRequest?.title, action),
+      prNumber,
+      prAction: action,
+      url: pullRequest?.html_url,
     };
   }
 
@@ -539,6 +684,7 @@ export interface GithubPRPayload {
     number: number;
     title: string;
     html_url: string;
+    merged?: boolean;
     head: { ref: string };
   };
   repository: { full_name: string; html_url: string };
@@ -574,13 +720,22 @@ export function parsePushPayload(payload: GithubPushPayload) {
 }
 
 export function parsePRPayload(payload: GithubPRPayload) {
+  const action = resolvePrAction(
+    payload.action,
+    payload.pull_request.merged
+  );
+
   return {
     repoFullName: payload.repository.full_name,
     branch: payload.pull_request.head.ref,
     actorGithubLogin: payload.sender.login,
     prNumber: payload.pull_request.number,
-    prAction: payload.action,
+    prAction: action,
     url: payload.pull_request.html_url,
-    title: `PR #${payload.pull_request.number}: ${payload.pull_request.title} (${payload.action})`,
+    title: buildPrTitle(
+      payload.pull_request.number,
+      payload.pull_request.title,
+      action
+    ),
   };
 }

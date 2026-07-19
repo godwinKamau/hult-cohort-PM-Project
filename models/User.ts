@@ -7,6 +7,8 @@ const UserSchema = new Schema(
     name: { type: String, required: true },
     imageUrl: { type: String },
     githubUsername: { type: String },
+    avatarGrid: { type: String },
+    avatarColor: { type: String },
   },
   { timestamps: true }
 );

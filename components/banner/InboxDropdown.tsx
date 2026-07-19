@@ -22,11 +22,13 @@ import {
   acceptOrgInvitationAction,
   respondToInviteAction,
 } from "@/actions/invites";
+import { useFloatingAvatars } from "@/components/avatar/FloatingAvatarsProvider";
 import { useInviteNavigation } from "@/components/invites/useInviteNavigation";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export function InboxDropdown() {
+  const { addFloatingAvatar } = useFloatingAvatars();
   const { navigateAfterAccept } = useInviteNavigation();
   const { userInvitations } = useOrganizationList({
     userInvitations: { infinite: true },
@@ -96,6 +98,19 @@ export function InboxDropdown() {
   };
 
   const handleDismiss = async (notificationId: string) => {
+    const item = items.find((entry) => entry.id === notificationId);
+
+    if (
+      item?.type === "reaction" &&
+      item.meta.reactorAvatarGrid &&
+      item.meta.reactorAvatarColor
+    ) {
+      addFloatingAvatar({
+        grid: item.meta.reactorAvatarGrid,
+        color: item.meta.reactorAvatarColor,
+      });
+    }
+
     const res = await fetch(`/api/notifications/${notificationId}/dismiss`, {
       method: "DELETE",
     });

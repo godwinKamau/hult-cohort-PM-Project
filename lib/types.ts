@@ -14,6 +14,11 @@ export const TAG_COLORS = [
 
 export type TagColor = (typeof TAG_COLORS)[number];
 
+export interface PixelAvatarDTO {
+  grid: string;
+  color: string;
+}
+
 export interface UserDTO {
   id: string;
   clerkUserId: string;
@@ -21,6 +26,8 @@ export interface UserDTO {
   name: string;
   imageUrl?: string;
   githubUsername?: string;
+  avatarGrid?: string;
+  avatarColor?: string;
 }
 
 export interface OrganizationDTO {
@@ -121,6 +128,8 @@ export interface NotificationMetaDTO {
   url?: string;
   reactorClerkId?: string;
   reactorName?: string;
+  reactorAvatarGrid?: string;
+  reactorAvatarColor?: string;
   originalNotificationId?: string;
 }
 
