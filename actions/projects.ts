@@ -3,8 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { requireOrg, requireProjectMembership } from "@/lib/auth";
 import {
+  ALL_BRANCHES,
   getGithubAccessToken,
   listGithubBranches,
+  listGithubReposForOwner,
+  normalizeGithubOwner,
   normalizeRepoTarget,
   verifyGithubRepo,
 } from "@/lib/github";
@@ -65,6 +68,26 @@ export async function archiveProjectAction(
   }
 }
 
+export async function listProjectGithubReposAction(
+  owner: string
+): Promise<{ success: boolean; repos?: string[]; error?: string }> {
+  try {
+    const { userId } = await requireOrg();
+    const normalizedOwner = normalizeGithubOwner(owner);
+
+    if (!normalizedOwner) {
+      return { success: false, error: "Owner is required" };
+    }
+
+    const token = await requireGithubToken(userId);
+    const repos = await listGithubReposForOwner(token, normalizedOwner);
+
+    return { success: true, repos };
+  } catch (e) {
+    return { success: false, error: (e as Error).message };
+  }
+}
+
 export async function verifyProjectGithubRepoAction(
   owner: string,
   repoName: string
@@ -113,7 +136,7 @@ export async function setProjectGithubAction(
       return { success: false, error: "Owner and repository name are required" };
     }
 
-    const branch = github.branch?.trim() || "main";
+    const branch = github.branch?.trim() || ALL_BRANCHES;
 
     await projectRepo.setProjectGithub(orgId, projectId, {
       repoFullName: `${target.owner}/${target.repo}`,

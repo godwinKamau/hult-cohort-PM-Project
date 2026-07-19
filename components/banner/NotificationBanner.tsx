@@ -95,6 +95,21 @@ export function NotificationBanner() {
     );
   };
 
+  const handleDismiss = async (id: string) => {
+    const res = await fetch(`/api/notifications/${id}/dismiss`, {
+      method: "DELETE",
+    });
+    if (!res.ok) return;
+
+    mutate(
+      (current) => {
+        if (!current) return current;
+        return { items: current.items.filter((item) => item.id !== id) };
+      },
+      { revalidate: false }
+    );
+  };
+
   const displayItems = shouldScroll ? [...items, ...items] : items;
 
   return (
@@ -128,6 +143,7 @@ export function NotificationBanner() {
                   key={`${item.id}-${i}`}
                   item={item}
                   onReact={handleReact}
+                  onDismiss={handleDismiss}
                   ariaHidden={shouldScroll && i >= items.length}
                 />
               ))}

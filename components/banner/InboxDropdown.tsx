@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useOrganizationList } from "@clerk/nextjs";
 import useSWR from "swr";
 import { Bell } from "lucide-react";
 import {
@@ -13,17 +13,29 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import type { NotificationDTO, ProjectInviteInboxDTO } from "@/lib/types";
-import { respondToInviteAction } from "@/actions/invites";
+import type {
+  NotificationDTO,
+  OrgInviteInboxDTO,
+  ProjectInviteInboxDTO,
+} from "@/lib/types";
+import {
+  acceptOrgInvitationAction,
+  respondToInviteAction,
+} from "@/actions/invites";
+import { useInviteNavigation } from "@/components/invites/useInviteNavigation";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export function InboxDropdown() {
-  const router = useRouter();
+  const { navigateAfterAccept } = useInviteNavigation();
+  const { userInvitations } = useOrganizationList({
+    userInvitations: { infinite: true },
+  });
   const [respondingId, setRespondingId] = useState<string | null>(null);
   const { data, mutate } = useSWR<{
     items: NotificationDTO[];
     invites: ProjectInviteInboxDTO[];
+    orgInvites: OrgInviteInboxDTO[];
   }>("/api/inbox", fetcher, {
     refreshInterval: 10000,
     refreshWhenHidden: false,
@@ -31,16 +43,71 @@ export function InboxDropdown() {
 
   const items = data?.items ?? [];
   const invites = data?.invites ?? [];
-  const unreadCount = items.length + invites.length;
+  const orgInvites = data?.orgInvites ?? [];
+  const unreadCount = items.length + invites.length + orgInvites.length;
 
-  const handleRespond = async (inviteId: string, accept: boolean) => {
-    setRespondingId(inviteId);
+  const handleProjectInvite = async (inviteId: string, accept: boolean) => {
+    setRespondingId(`project:${inviteId}`);
     const result = await respondToInviteAction(inviteId, accept);
     if (result.success) {
       await mutate();
-      router.refresh();
+      if (accept && result.organizationId && result.redirectTo) {
+        await navigateAfterAccept(result.organizationId, result.redirectTo);
+      } else {
+        window.location.reload();
+      }
     }
     setRespondingId(null);
+  };
+
+  const handleOrgInvite = async (
+    invitationId: string,
+    organizationId: string
+  ) => {
+    setRespondingId(`org:${invitationId}`);
+    try {
+      const clerkInvite = userInvitations?.data?.find(
+        (invite) => invite.id === invitationId
+      );
+
+      if (clerkInvite) {
+        await clerkInvite.accept();
+      } else {
+        const result = await acceptOrgInvitationAction(invitationId);
+        if (!result.success) return;
+      }
+
+      await mutate(
+        (current) =>
+          current
+            ? {
+                ...current,
+                orgInvites: current.orgInvites.filter(
+                  (invite) => invite.id !== invitationId
+                ),
+              }
+            : current,
+        { revalidate: true }
+      );
+      await navigateAfterAccept(organizationId, "/dashboard");
+    } finally {
+      setRespondingId(null);
+    }
+  };
+
+  const handleDismiss = async (notificationId: string) => {
+    const res = await fetch(`/api/notifications/${notificationId}/dismiss`, {
+      method: "DELETE",
+    });
+    if (res.ok) {
+      await mutate(
+        (current) =>
+          current
+            ? { ...current, items: current.items.filter((item) => item.id !== notificationId) }
+            : current,
+        { revalidate: false }
+      );
+    }
   };
 
   return (
@@ -56,6 +123,39 @@ export function InboxDropdown() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80">
+        {orgInvites.length > 0 && (
+          <>
+            <DropdownMenuLabel className="font-mono text-xs text-primary">
+              organization_invites
+            </DropdownMenuLabel>
+            {orgInvites.map((invite) => (
+              <DropdownMenuItem
+                key={invite.id}
+                className="flex flex-col items-start gap-2 focus:bg-transparent"
+                onSelect={(e) => e.preventDefault()}
+              >
+                <div>
+                  <span className="text-xs text-primary block">
+                    Join {invite.organizationName}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {new Date(invite.createdAt).toLocaleString()}
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  className="h-7 w-full"
+                  disabled={respondingId === `org:${invite.id}`}
+                  onClick={() => handleOrgInvite(invite.id, invite.organizationId)}
+                >
+                  accept()
+                </Button>
+              </DropdownMenuItem>
+            ))}
+            {(invites.length > 0 || items.length > 0) && <DropdownMenuSeparator />}
+          </>
+        )}
+
         {invites.length > 0 && (
           <>
             <DropdownMenuLabel className="font-mono text-xs text-primary">
@@ -71,6 +171,9 @@ export function InboxDropdown() {
                   <span className="text-xs text-primary block">
                     {invite.inviterName} invited you to {invite.projectName}
                   </span>
+                  <span className="text-[10px] text-muted-foreground block">
+                    {invite.organizationName}
+                  </span>
                   <span className="text-[10px] text-muted-foreground">
                     {new Date(invite.createdAt).toLocaleString()}
                   </span>
@@ -79,8 +182,8 @@ export function InboxDropdown() {
                   <Button
                     size="sm"
                     className="h-7 flex-1"
-                    disabled={respondingId === invite.id}
-                    onClick={() => handleRespond(invite.id, true)}
+                    disabled={respondingId === `project:${invite.id}`}
+                    onClick={() => handleProjectInvite(invite.id, true)}
                   >
                     accept()
                   </Button>
@@ -88,8 +191,8 @@ export function InboxDropdown() {
                     size="sm"
                     variant="outline"
                     className="h-7 flex-1"
-                    disabled={respondingId === invite.id}
-                    onClick={() => handleRespond(invite.id, false)}
+                    disabled={respondingId === `project:${invite.id}`}
+                    onClick={() => handleProjectInvite(invite.id, false)}
                   >
                     reject()
                   </Button>
@@ -106,13 +209,17 @@ export function InboxDropdown() {
           </DropdownMenuLabel>
         )}
 
-        {items.length === 0 && invites.length === 0 ? (
+        {items.length === 0 && invites.length === 0 && orgInvites.length === 0 ? (
           <DropdownMenuItem disabled className="text-muted-foreground">
             &gt; inbox_empty
           </DropdownMenuItem>
         ) : (
           items.map((item) => (
-            <DropdownMenuItem key={item.id} className="flex flex-col items-start">
+            <DropdownMenuItem
+              key={item.id}
+              className="flex flex-col items-start cursor-pointer"
+              onClick={() => handleDismiss(item.id)}
+            >
               <span className="text-xs text-primary">{item.title}</span>
               <span className="text-[10px] text-muted-foreground">
                 {new Date(item.createdAt).toLocaleString()}

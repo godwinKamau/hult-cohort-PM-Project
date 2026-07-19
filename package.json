@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "tsx scripts/seed.ts",
+    "backfill:ticket-numbers": "tsx scripts/backfill-ticket-numbers.ts",
     "test:webhook": "tsx scripts/send-test-webhook.ts"
   },
   "dependencies": {

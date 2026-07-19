@@ -1,3 +1,4 @@
+import { ALL_BRANCHES } from "@/lib/github";
 import { connectDB } from "@/lib/db";
 import { serializeDoc } from "@/lib/serialize";
 import type { ProjectDTO } from "@/lib/types";
@@ -144,23 +145,30 @@ export async function addProjectMember(
 
 export async function findProjectByRepo(
   repoFullName: string,
-  branch?: string
+  eventBranch?: string
 ): Promise<ProjectDTO | null> {
   await connectDB();
-  const filter: Record<string, unknown> = {
+  const baseFilter = {
     "github.repoFullName": repoFullName,
     archived: false,
   };
-  if (branch) {
-    filter["github.branch"] = branch;
+
+  if (!eventBranch) {
+    const doc = await Project.findOne(baseFilter).lean();
+    return serializeProject(doc);
   }
-  const doc = await Project.findOne(filter).lean();
-  if (!doc && branch) {
-    const fallback = await Project.findOne({
-      "github.repoFullName": repoFullName,
-      archived: false,
-    }).lean();
-    return serializeProject(fallback);
+
+  const exactMatch = await Project.findOne({
+    ...baseFilter,
+    "github.branch": eventBranch,
+  }).lean();
+  if (exactMatch) {
+    return serializeProject(exactMatch);
   }
-  return serializeProject(doc);
+
+  const allBranchesMatch = await Project.findOne({
+    ...baseFilter,
+    "github.branch": ALL_BRANCHES,
+  }).lean();
+  return serializeProject(allBranchesMatch);
 }

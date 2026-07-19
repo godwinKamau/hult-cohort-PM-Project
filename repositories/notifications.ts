@@ -72,6 +72,37 @@ export async function getPersonalNotifications(
   return docs.map((d) => serializeDoc<NotificationDTO>(d)!);
 }
 
+export async function deletePersonalNotification(
+  notificationId: string,
+  recipientClerkId: string
+): Promise<boolean> {
+  await connectDB();
+  const result = await Notification.findOneAndDelete({
+    _id: notificationId,
+    recipientClerkId,
+    type: "reaction",
+  });
+  return !!result;
+}
+
+export async function dismissOrgNotification(
+  orgId: string,
+  notificationId: string
+): Promise<boolean> {
+  await connectDB();
+  const result = await Notification.findOneAndDelete({
+    _id: notificationId,
+    organizationId: orgId,
+    type: { $in: ["push", "pull_request"] },
+  });
+
+  if (!result) return false;
+
+  const notifications = await listRecentNotifications(orgId);
+  await syncBannerCache(orgId, notifications);
+  return true;
+}
+
 export async function getNotification(
   orgId: string,
   notificationId: string

@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --font-size: 14px;
+  --font-size: 16px;
   --background: #0a0a0a;
   --foreground: #00ff41;
   --card: #111111;
@@ -82,7 +82,7 @@
   --color-black-deep: var(--black-deep);
   --color-black-light: var(--black-light);
   --color-black-lighter: var(--black-lighter);
-  --font-mono: var(--font-jetbrains-mono);
+  --font-mono: var(--font-atkinson-mono);
 }
 
 @layer base {

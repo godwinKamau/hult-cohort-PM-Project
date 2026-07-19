@@ -18,6 +18,7 @@ const ProjectSchema = new Schema(
     github: { type: ProjectGithubSchema, default: () => ({}) },
     createdBy: { type: String, required: true },
     members: { type: [String], default: [], index: true },
+    ticketSequence: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

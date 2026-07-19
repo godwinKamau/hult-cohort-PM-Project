@@ -44,16 +44,18 @@ export function TicketPeek({
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && close()}>
-      <SheetContent side="right" className="overflow-y-auto text-foreground">
+      <SheetContent side="right" className="overflow-hidden text-foreground">
         {ticket ? (
-          <TicketPeekContent
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <TicketPeekContent
             key={ticket.id}
             ticket={ticket}
             tags={tags}
             notes={notes}
             members={members}
             project={project}
-          />
+            />
+          </div>
         ) : (
           <div className="space-y-2 pt-8">
             <p className="font-mono text-primary">ticket.peek()</p>

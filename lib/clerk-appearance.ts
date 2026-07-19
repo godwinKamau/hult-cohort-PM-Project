@@ -15,7 +15,7 @@ export const clerkAppearance = {
     colorDanger: "#ff0040",
     colorWarning: "#ffb86c",
     borderRadius: "0.25rem",
-    fontFamily: "var(--font-jetbrains-mono), ui-monospace, monospace",
+    fontFamily: "var(--font-atkinson-mono), ui-monospace, monospace",
   },
   elements: {
     modalBackdrop: "bg-black/80 backdrop-blur-sm",

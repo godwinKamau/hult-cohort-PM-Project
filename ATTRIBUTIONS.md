@@ -19,4 +19,4 @@ This project uses [shadcn/ui](https://ui.shadcn.com/) components under [MIT lice
 
 ## Fonts
 
-[JetBrains Mono](https://www.jetbrains.com/lp/mono/) via Google Fonts.
+[Atkinson Hyperlegible Mono](https://fonts.google.com/specimen/Atkinson+Hyperlegible+Mono) via Google Fonts.

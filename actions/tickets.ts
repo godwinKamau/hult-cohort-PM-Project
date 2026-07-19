@@ -9,6 +9,7 @@ export async function createTicketAction(data: {
   projectId: string;
   title: string;
   description?: string;
+  status?: TicketStatus;
   assigneeClerkId?: string;
   tagIds?: string[];
 }): Promise<{ success: boolean; ticket?: TicketDTO; error?: string }> {
@@ -55,6 +56,33 @@ export async function updateTicketAction(
     const ticket = await ticketRepo.updateTicket(orgId, ticketId, data);
     revalidatePath(`/projects/${projectId}`);
     return { success: true, ticket: ticket ?? undefined };
+  } catch (e) {
+    return { success: false, error: (e as Error).message };
+  }
+}
+
+export async function changeTicketStatusAction(
+  ticketId: string,
+  projectId: string,
+  status: TicketStatus
+): Promise<{ success: boolean; ticket?: TicketDTO; error?: string }> {
+  try {
+    const { orgId, userId } = await requireOrg();
+    await requireProjectMembership(orgId, projectId, userId);
+
+    const ticket = await ticketRepo.changeTicketStatus(
+      orgId,
+      ticketId,
+      projectId,
+      status
+    );
+
+    if (!ticket) {
+      return { success: false, error: "Ticket not found" };
+    }
+
+    revalidatePath(`/projects/${projectId}`);
+    return { success: true, ticket };
   } catch (e) {
     return { success: false, error: (e as Error).message };
   }
