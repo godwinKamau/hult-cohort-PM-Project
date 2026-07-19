@@ -15,6 +15,7 @@ import {
   normalizeRepoTarget,
   verifyGithubRepo,
 } from "@/lib/github";
+import { isValidAvatarColor } from "@/lib/avatar";
 import * as projectRepo from "@/repositories/projects";
 import type { ProjectDTO } from "@/lib/types";
 
@@ -147,6 +148,26 @@ export async function deleteProjectAction(
     }
 
     revalidatePath("/dashboard");
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: (e as Error).message };
+  }
+}
+
+export async function setProjectThemeColorAction(
+  projectId: string,
+  themeColor: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { orgId, userId } = await requireOrg();
+    await requireProjectOwnership(orgId, projectId, userId);
+
+    if (!isValidAvatarColor(themeColor)) {
+      return { success: false, error: "Invalid theme color" };
+    }
+
+    await projectRepo.setProjectThemeColor(orgId, projectId, themeColor);
+    revalidatePath(`/projects/${projectId}`);
     return { success: true };
   } catch (e) {
     return { success: false, error: (e as Error).message };

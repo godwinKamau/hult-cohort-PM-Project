@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ProjectDTO } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -9,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { EmptyState } from "@/components/states/EmptyState";
+import { ProjectCard } from "@/components/dashboard/ProjectCard";
 import { createProjectAction } from "@/actions/projects";
 
 interface DashboardClientProps {
@@ -105,21 +105,7 @@ export function DashboardClient({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {projects.map((project) => (
-            <Link
-              key={project.id}
-              href={`/projects/${project.id}`}
-              className="cyber-border bg-black-light/30 border-primary/20 hover:border-primary/50 transition-all duration-300 rounded p-4 group"
-            >
-              <h3 className="font-mono text-primary mb-2">{project.name}</h3>
-              <p className="font-mono text-sm text-muted-foreground line-clamp-2">
-                {project.description || "No description"}
-              </p>
-              {project.github.repoFullName && (
-                <p className="font-mono text-xs text-green-dark mt-2">
-                  [{project.github.repoFullName}]
-                </p>
-              )}
-            </Link>
+            <ProjectCard key={project.id} project={project} />
           ))}
         </div>
       )}

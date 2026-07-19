@@ -2,6 +2,7 @@ import { ALL_BRANCHES } from "@/lib/github";
 import { connectDB } from "@/lib/db";
 import { serializeDoc } from "@/lib/serialize";
 import type { ProjectDTO } from "@/lib/types";
+import { DEFAULT_PROJECT_THEME_COLOR } from "@/lib/project-theme";
 import {
   Note,
   Notification,
@@ -20,6 +21,9 @@ function serializeProject(
   }
   if (!Array.isArray(project.members)) {
     project.members = [];
+  }
+  if (!project.themeColor) {
+    project.themeColor = DEFAULT_PROJECT_THEME_COLOR;
   }
   return project;
 }
@@ -130,6 +134,20 @@ export async function setProjectGithub(
         "github.webhookConfiguredAt": new Date(),
       },
     },
+    { returnDocument: "after" }
+  ).lean();
+  return serializeProject(doc);
+}
+
+export async function setProjectThemeColor(
+  orgId: string,
+  projectId: string,
+  themeColor: string
+): Promise<ProjectDTO | null> {
+  await connectDB();
+  const doc = await Project.findOneAndUpdate(
+    { _id: projectId, organizationId: orgId },
+    { $set: { themeColor } },
     { returnDocument: "after" }
   ).lean();
   return serializeProject(doc);

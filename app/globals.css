@@ -150,6 +150,36 @@
   border-radius: inherit;
 }
 
+.project-card {
+  position: relative;
+  border: 1px solid rgba(var(--project-theme-rgb), 0.2);
+  box-shadow: 0 0 20px rgba(var(--project-theme-rgb), 0.2);
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.project-card:hover {
+  border-color: rgba(var(--project-theme-rgb), 0.5);
+  box-shadow: 0 0 24px rgba(var(--project-theme-rgb), 0.35);
+}
+
+.project-card::before {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(
+    45deg,
+    transparent,
+    rgba(var(--project-theme-rgb), 0.1),
+    transparent,
+    rgba(var(--project-theme-rgb), 0.1)
+  );
+  z-index: -1;
+  border-radius: inherit;
+}
+
 @keyframes banner-scroll {
   0% {
     transform: translateX(0);
