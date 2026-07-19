@@ -191,7 +191,7 @@ function FloatingAvatarsLayer({ avatars }: { avatars: FloatingAvatar[] }) {
 
   return (
     <div
-      className="fixed inset-0 z-0 pointer-events-none overflow-hidden"
+      className="fixed inset-0 z-[15] pointer-events-none overflow-hidden"
       aria-hidden
     >
       {avatars.map((avatar) => (
