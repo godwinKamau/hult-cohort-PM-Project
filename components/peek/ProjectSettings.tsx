@@ -15,8 +15,10 @@ import {
 } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
+  deleteProjectAction,
   listProjectGithubReposAction,
   setProjectGithubAction,
+  setProjectThemeColorAction,
   verifyProjectGithubRepoAction,
 } from "@/actions/projects";
 import { inviteToProjectAction, inviteToProjectByEmailAction } from "@/actions/invites";
@@ -29,10 +31,13 @@ import {
   getInviteEmptyReason,
   resolvePendingInviteDisplayName,
 } from "@/lib/project-members";
-import type { OrgMemberDTO, ProjectInviteDTO } from "@/lib/types";
+import type { OrgMemberDTO, ProjectInviteDTO, TagColor } from "@/lib/types";
+import { TAG_COLORS } from "@/lib/types";
 
 interface ProjectSettingsProps {
   projectId: string;
+  projectName: string;
+  themeColor: string;
   githubUsername?: string;
   repoFullName?: string;
   branch?: string;
@@ -45,20 +50,48 @@ interface ProjectSettingsProps {
 
 function SettingsWindow({
   title,
+  variant = "default",
   children,
 }: {
   title: string;
+  variant?: "default" | "danger";
   children: React.ReactNode;
 }) {
+  const isDanger = variant === "danger";
+
   return (
-    <div className="overflow-hidden rounded border border-primary/20 bg-black-light/20">
-      <div className="flex items-center gap-2 border-b border-primary/20 bg-black-light/50 px-3 py-2">
-        <div className="flex items-center gap-1.5" aria-hidden="true">
+    <div
+      className={cn(
+        "overflow-hidden rounded border bg-black-light/20 shadow-sm",
+        isDanger ? "border-destructive/35" : "border-primary/35"
+      )}
+    >
+      <div
+        className={cn(
+          "flex items-center gap-3 border-b px-4 py-3",
+          isDanger
+            ? "border-destructive/30 bg-destructive/10"
+            : "border-primary/30 bg-primary/10"
+        )}
+      >
+        <div className="flex shrink-0 items-center gap-1.5" aria-hidden="true">
           <div className="h-2.5 w-2.5 rounded-full bg-red-500" />
           <div className="h-2.5 w-2.5 rounded-full bg-yellow-500" />
-          <div className="h-2.5 w-2.5 rounded-full bg-primary" />
+          <div
+            className={cn(
+              "h-2.5 w-2.5 rounded-full",
+              isDanger ? "bg-destructive" : "bg-primary"
+            )}
+          />
         </div>
-        <span className="font-mono text-xs text-muted-foreground">{title}</span>
+        <span
+          className={cn(
+            "font-mono text-sm font-semibold tracking-wide",
+            isDanger ? "text-destructive" : "text-primary"
+          )}
+        >
+          {title}
+        </span>
       </div>
       <div className="space-y-3 p-4">{children}</div>
     </div>
@@ -140,6 +173,8 @@ function resolveBranchSelection(
 
 export function ProjectSettings({
   projectId,
+  projectName,
+  themeColor,
   githubUsername = "",
   repoFullName = "",
   branch = "",
@@ -177,6 +212,16 @@ export function ProjectSettings({
   );
   const [inviting, setInviting] = useState(false);
   const [inviteMessage, setInviteMessage] = useState("");
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteMessage, setDeleteMessage] = useState("");
+  const [selectedThemeColor, setSelectedThemeColor] = useState(themeColor);
+  const [savingTheme, setSavingTheme] = useState(false);
+  const [themeMessage, setThemeMessage] = useState("");
+
+  const isOwner = projectCreatorId === currentUserId;
+  const canDeleteProject =
+    deleteConfirmation.trim() === projectName.trim() && !deleting;
 
   const canManageMembers = useMemo(
     () =>
@@ -270,6 +315,28 @@ export function ProjectSettings({
 
     return `> Tracks ${branchLabel(branchName)} only`;
   }, [branchName, verified]);
+
+  useEffect(() => {
+    setSelectedThemeColor(themeColor);
+  }, [themeColor]);
+
+  const handleThemeColorChange = async (color: TagColor) => {
+    if (color === selectedThemeColor || savingTheme) {
+      return;
+    }
+
+    setSavingTheme(true);
+    setThemeMessage("");
+    const result = await setProjectThemeColorAction(projectId, color);
+    if (result.success) {
+      setSelectedThemeColor(color);
+      setThemeMessage("> Theme updated ✓");
+      router.refresh();
+    } else {
+      setThemeMessage(`> error: ${result.error ?? "Theme update failed — try again"}`);
+    }
+    setSavingTheme(false);
+  };
 
   const handleVerify = useCallback(async () => {
     const owner = normalizeOwnerInput(repoOwner);
@@ -475,6 +542,25 @@ export function ProjectSettings({
       setInviteMessage(`> error: ${result.error ?? "Invite failed — try again"}`);
     }
     setInviting(false);
+  };
+
+  const handleDeleteProject = async () => {
+    if (deleteConfirmation.trim() !== projectName.trim()) {
+      setDeleteMessage("> error: Project name does not match");
+      return;
+    }
+
+    setDeleting(true);
+    setDeleteMessage("");
+    const result = await deleteProjectAction(projectId, deleteConfirmation.trim());
+    if (result.success) {
+      router.push("/dashboard");
+      router.refresh();
+      return;
+    }
+
+    setDeleteMessage(`> error: ${result.error ?? "Delete failed — try again"}`);
+    setDeleting(false);
   };
 
   return (
@@ -684,6 +770,56 @@ export function ProjectSettings({
         </SettingsWindow>
       )}
 
+      {isOwner && (
+        <SettingsWindow title="theme.config">
+          <p className="font-mono text-xs leading-relaxed text-muted-foreground">
+            Choose the accent color for this project. Invited members will see
+            the same theme while viewing the project.
+          </p>
+
+          <div className="space-y-3 border-t border-primary/15 pt-3">
+            <span className="font-mono text-sm font-medium tracking-wide text-primary">
+              --accent_color
+            </span>
+
+            <div className="flex gap-2">
+              {TAG_COLORS.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  aria-label={`Select theme color ${color}`}
+                  aria-pressed={selectedThemeColor === color}
+                  onClick={() => handleThemeColorChange(color)}
+                  disabled={savingTheme}
+                  className={cn(
+                    "h-8 w-8 rounded border-2 transition-all",
+                    selectedThemeColor === color
+                      ? "border-primary scale-110"
+                      : "border-primary/20 hover:border-primary/50"
+                  )}
+                  style={{ backgroundColor: color }}
+                />
+              ))}
+            </div>
+
+            {themeMessage && (
+              <p
+                role="status"
+                aria-live="polite"
+                className={cn(
+                  "font-mono text-xs",
+                  themeMessage.startsWith("> error:")
+                    ? "text-destructive"
+                    : "text-green-dark"
+                )}
+              >
+                {themeMessage}
+              </p>
+            )}
+          </div>
+        </SettingsWindow>
+      )}
+
       <SettingsWindow title="github.config">
         <p className="font-mono text-xs leading-relaxed text-muted-foreground">
           Set the repository owner and name, verify the repo, choose a branch,
@@ -818,6 +954,62 @@ export function ProjectSettings({
           )}
         </div>
       </SettingsWindow>
+
+      {isOwner && (
+        <SettingsWindow title="danger.config" variant="danger">
+          <p className="font-mono text-xs leading-relaxed text-muted-foreground">
+            Permanently delete this project and all of its tickets, notes,
+            invites, and notifications. This action cannot be undone.
+          </p>
+
+          <div className="space-y-3 border-t border-destructive/20 pt-3">
+            <span className="font-mono text-sm font-medium tracking-wide text-destructive">
+              --delete_project
+            </span>
+
+            <div className="space-y-1">
+              <Label
+                htmlFor={`delete-confirm-${projectId}`}
+                className="text-xs font-normal text-foreground"
+              >
+                Type <span className="text-destructive">{projectName}</span> to
+                confirm
+              </Label>
+              <Input
+                id={`delete-confirm-${projectId}`}
+                value={deleteConfirmation}
+                onChange={(e) => {
+                  setDeleteConfirmation(e.target.value);
+                  setDeleteMessage("");
+                }}
+                placeholder={projectName}
+                autoComplete="off"
+                spellCheck={false}
+                disabled={deleting}
+              />
+            </div>
+
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={handleDeleteProject}
+              disabled={!canDeleteProject}
+            >
+              {deleting ? "deleting…" : "delete_project()"}
+            </Button>
+
+            {deleteMessage && (
+              <p
+                role="status"
+                aria-live="polite"
+                className="font-mono text-xs text-destructive"
+              >
+                {deleteMessage}
+              </p>
+            )}
+          </div>
+        </SettingsWindow>
+      )}
     </div>
   );
 }

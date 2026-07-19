@@ -2,7 +2,14 @@ import { ALL_BRANCHES } from "@/lib/github";
 import { connectDB } from "@/lib/db";
 import { serializeDoc } from "@/lib/serialize";
 import type { ProjectDTO } from "@/lib/types";
-import { Project } from "@/models";
+import { DEFAULT_PROJECT_THEME_COLOR } from "@/lib/project-theme";
+import {
+  Note,
+  Notification,
+  Project,
+  ProjectInvite,
+  Ticket,
+} from "@/models";
 
 function serializeProject(
   doc: Parameters<typeof serializeDoc>[0]
@@ -14,6 +21,9 @@ function serializeProject(
   }
   if (!Array.isArray(project.members)) {
     project.members = [];
+  }
+  if (!project.themeColor) {
+    project.themeColor = DEFAULT_PROJECT_THEME_COLOR;
   }
   return project;
 }
@@ -129,6 +139,20 @@ export async function setProjectGithub(
   return serializeProject(doc);
 }
 
+export async function setProjectThemeColor(
+  orgId: string,
+  projectId: string,
+  themeColor: string
+): Promise<ProjectDTO | null> {
+  await connectDB();
+  const doc = await Project.findOneAndUpdate(
+    { _id: projectId, organizationId: orgId },
+    { $set: { themeColor } },
+    { returnDocument: "after" }
+  ).lean();
+  return serializeProject(doc);
+}
+
 export async function addProjectMember(
   orgId: string,
   projectId: string,
@@ -141,6 +165,48 @@ export async function addProjectMember(
     { returnDocument: "after" }
   ).lean();
   return serializeProject(doc);
+}
+
+export async function deleteProject(
+  orgId: string,
+  projectId: string,
+  userId: string
+): Promise<boolean> {
+  await connectDB();
+
+  const project = await Project.findOne({
+    _id: projectId,
+    organizationId: orgId,
+    createdBy: userId,
+  }).lean();
+
+  if (!project) {
+    return false;
+  }
+
+  const ticketIds = await Ticket.find({
+    organizationId: orgId,
+    projectId,
+  }).distinct("_id");
+
+  const deletions: Promise<unknown>[] = [
+    Ticket.deleteMany({ organizationId: orgId, projectId }),
+    ProjectInvite.deleteMany({ organizationId: orgId, projectId }),
+    Notification.deleteMany({ organizationId: orgId, projectId }),
+    Project.findOneAndDelete({ _id: projectId, organizationId: orgId }),
+  ];
+
+  if (ticketIds.length > 0) {
+    deletions.unshift(
+      Note.deleteMany({
+        organizationId: orgId,
+        ticketId: { $in: ticketIds },
+      })
+    );
+  }
+
+  await Promise.all(deletions);
+  return true;
 }
 
 export async function findProjectByRepo(

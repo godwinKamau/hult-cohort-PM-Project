@@ -13,6 +13,10 @@ import type {
 } from "@/lib/types";
 import { ticketMatchesQuery } from "@/lib/fuzzySearch";
 import { TICKET_STATUSES } from "@/lib/ticketStatus";
+import {
+  applyProjectTheme,
+  DEFAULT_PROJECT_THEME_COLOR,
+} from "@/lib/project-theme";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -128,6 +132,14 @@ export function ProjectPageClient({
   const searchParams = useSearchParams();
   const { showToast } = useTerminalToast();
   useSetHeaderProjectName(project?.name);
+  const projectThemeColor =
+    project?.themeColor ?? DEFAULT_PROJECT_THEME_COLOR;
+
+  useEffect(() => {
+    if (!project) return;
+    return applyProjectTheme(projectThemeColor);
+  }, [project, projectThemeColor]);
+
   const [statusChangingId, setStatusChangingId] = useState<string | null>(null);
   const [settingsRequested, setSettingsRequested] = useState(false);
 
@@ -506,6 +518,8 @@ export function ProjectPageClient({
           <div className="mt-4">
             <ProjectSettings
               projectId={project.id}
+              projectName={project.name}
+              themeColor={projectThemeColor}
               githubUsername={githubUsername}
               repoFullName={project.github.repoFullName}
               branch={project.github.branch}

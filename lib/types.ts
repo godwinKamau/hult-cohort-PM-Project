@@ -52,6 +52,7 @@ export interface ProjectDTO {
   github: ProjectGithubDTO;
   createdBy: string;
   members: string[];
+  themeColor: string;
   createdAt: string;
   updatedAt: string;
 }

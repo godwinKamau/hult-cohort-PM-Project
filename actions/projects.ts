@@ -1,7 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireOrg, requireProjectMembership } from "@/lib/auth";
+import {
+  requireOrg,
+  requireProjectMembership,
+  requireProjectOwnership,
+} from "@/lib/auth";
 import {
   ALL_BRANCHES,
   getGithubAccessToken,
@@ -11,6 +15,7 @@ import {
   normalizeRepoTarget,
   verifyGithubRepo,
 } from "@/lib/github";
+import { isValidAvatarColor } from "@/lib/avatar";
 import * as projectRepo from "@/repositories/projects";
 import type { ProjectDTO } from "@/lib/types";
 
@@ -115,6 +120,55 @@ export async function verifyProjectGithubRepoAction(
     const branches = await listGithubBranches(token, target.owner, target.repo);
 
     return { success: true, branches, defaultBranch };
+  } catch (e) {
+    return { success: false, error: (e as Error).message };
+  }
+}
+
+export async function deleteProjectAction(
+  projectId: string,
+  confirmationName: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { orgId, userId } = await requireOrg();
+    await requireProjectOwnership(orgId, projectId, userId);
+
+    const project = await projectRepo.getProject(orgId, projectId, userId);
+    if (!project) {
+      return { success: false, error: "Project not found" };
+    }
+
+    if (confirmationName.trim() !== project.name.trim()) {
+      return { success: false, error: "Project name does not match" };
+    }
+
+    const deleted = await projectRepo.deleteProject(orgId, projectId, userId);
+    if (!deleted) {
+      return { success: false, error: "Failed to delete project" };
+    }
+
+    revalidatePath("/dashboard");
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: (e as Error).message };
+  }
+}
+
+export async function setProjectThemeColorAction(
+  projectId: string,
+  themeColor: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { orgId, userId } = await requireOrg();
+    await requireProjectOwnership(orgId, projectId, userId);
+
+    if (!isValidAvatarColor(themeColor)) {
+      return { success: false, error: "Invalid theme color" };
+    }
+
+    await projectRepo.setProjectThemeColor(orgId, projectId, themeColor);
+    revalidatePath(`/projects/${projectId}`);
+    return { success: true };
   } catch (e) {
     return { success: false, error: (e as Error).message };
   }

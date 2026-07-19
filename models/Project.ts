@@ -19,6 +19,7 @@ const ProjectSchema = new Schema(
     createdBy: { type: String, required: true },
     members: { type: [String], default: [], index: true },
     ticketSequence: { type: Number, default: 0 },
+    themeColor: { type: String, default: "#00ff41" },
   },
   { timestamps: true }
 );
