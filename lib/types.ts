@@ -8,8 +8,8 @@ export const TAG_COLORS = [
   "#00ff41",
   "#00ccff",
   "#ffaa00",
-  "#ff0040",
-  "#aa66ff",
+  "#ff6688",
+  "#c77dff",
 ] as const;
 
 export type TagColor = (typeof TAG_COLORS)[number];
