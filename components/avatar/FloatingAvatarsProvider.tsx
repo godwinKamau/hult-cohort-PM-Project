@@ -17,6 +17,7 @@ import { PixelAvatar } from "./PixelAvatar";
 const MAX_FLOATING_AVATARS = 12;
 const AVATAR_SIZE = 48;
 const VIEWPORT_PADDING = 16;
+const SIDE_LANE_WIDTH = 88;
 const TOP_SAFE_ZONE = 120;
 const EMOTE_DURATION_MS = 2500;
 
@@ -37,30 +38,33 @@ function createFloatingAvatarEntry(
   id: string
 ): FloatingAvatar {
   const seed = Math.random();
+  const seedY = Math.random();
+  const onLeft = Math.random() < 0.5;
   const vw = window.innerWidth;
   const vh = window.innerHeight;
 
   const minX = VIEWPORT_PADDING;
   const maxX = vw - AVATAR_SIZE - VIEWPORT_PADDING;
-  const left = minX + seed * Math.max(0, maxX - minX);
+
+  // Keep avatars in narrow lanes along the left or right edge.
+  const left = onLeft
+    ? minX + seed * SIDE_LANE_WIDTH
+    : maxX - seed * SIDE_LANE_WIDTH;
+
+  // Wobble outward (away from center) so drift never crosses into the workspace.
+  const wobble = 8 + seed * 20;
+  const driftX = onLeft ? -wobble : wobble;
 
   const minBottom = VIEWPORT_PADDING;
-  const maxBottom = Math.min(vh * 0.25, 120);
-  const bottom = minBottom + seed * Math.max(0, maxBottom - minBottom);
+  const maxBottom = Math.min(vh * 0.35, 160);
+  const bottom = minBottom + seedY * Math.max(0, maxBottom - minBottom);
 
   const startTop = vh - bottom - AVATAR_SIZE;
   const topLimit = TOP_SAFE_ZONE + VIEWPORT_PADDING;
-
-  const maxDriftLeft = left - minX;
-  const maxDriftRight = maxX - left;
-  const maxHorizontalDrift = Math.min(maxDriftLeft, maxDriftRight, 96);
-  const driftX =
-    maxHorizontalDrift > 0 ? (seed * 2 - 1) * maxHorizontalDrift : 0;
-
   const maxDriftUp = Math.max(0, startTop - topLimit);
-  const maxVerticalDrift = Math.min(maxDriftUp, 160);
+  const maxVerticalDrift = Math.min(maxDriftUp, 140);
   const driftY =
-    maxVerticalDrift > 0 ? -(seed * 0.5 + 0.5) * maxVerticalDrift : 0;
+    maxVerticalDrift > 0 ? -(seedY * 0.4 + 0.3) * maxVerticalDrift : 0;
 
   return {
     ...avatar,
@@ -69,7 +73,7 @@ function createFloatingAvatarEntry(
     bottom,
     driftX,
     driftY,
-    rotate: (seed * 2 - 1) * 15,
+    rotate: (seed * 2 - 1) * 12,
     duration: 18 + seed * 14,
     emote: null,
     emoteNonce: 0,
