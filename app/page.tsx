@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TerminalPanel } from "@/components/states/TerminalPanel";
+import { TourLauncher } from "@/components/tour/TourLauncher";
 
 const features = [
   {
@@ -104,20 +105,19 @@ export default function HomePage() {
                 "> $ waiting_for_org…",
               ]}
             />
-            <Show when="signed-out">
-              <div className="flex gap-4 justify-center">
+            <div className="flex flex-wrap gap-4 justify-center">
+              <TourLauncher />
+              <Show when="signed-out">
                 <SignUpButton mode="modal">
                   <Button size="lg">get_started()</Button>
                 </SignUpButton>
-              </div>
-            </Show>
-            <Show when="signed-in">
-              <div className="flex gap-4 justify-center">
+              </Show>
+              <Show when="signed-in">
                 <Button size="lg" asChild>
                   <Link href="/dashboard">./dashboard</Link>
                 </Button>
-              </div>
-            </Show>
+              </Show>
+            </div>
           </section>
 
           {/* Features */}
