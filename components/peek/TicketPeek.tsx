@@ -18,6 +18,7 @@ interface TicketPeekProps {
   notes: NoteDTO[];
   members: OrgMemberDTO[];
   project: ProjectDTO;
+  onTicketPatch?: (ticketId: string, patch: Partial<TicketDTO>) => void;
 }
 
 export function TicketPeek({
@@ -26,6 +27,7 @@ export function TicketPeek({
   notes,
   members,
   project,
+  onTicketPatch,
 }: TicketPeekProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -54,6 +56,7 @@ export function TicketPeek({
             notes={notes}
             members={members}
             project={project}
+            onTicketPatch={onTicketPatch}
             />
           </div>
         ) : (

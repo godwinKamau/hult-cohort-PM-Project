@@ -18,3 +18,22 @@ export async function createTagAction(data: {
     return { success: false, error: (e as Error).message };
   }
 }
+
+export async function deleteTagAction(
+  tagId: string,
+  projectId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { orgId } = await requireOrg();
+    const deleted = await tagRepo.deleteTag(orgId, tagId);
+    if (!deleted) {
+      return { success: false, error: "Tag not found" };
+    }
+
+    revalidatePath(`/projects/${projectId}`);
+    revalidatePath("/dashboard");
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: (e as Error).message };
+  }
+}

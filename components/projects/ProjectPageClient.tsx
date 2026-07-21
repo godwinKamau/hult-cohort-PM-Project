@@ -142,6 +142,28 @@ export function ProjectPageClient({
 
   const [statusChangingId, setStatusChangingId] = useState<string | null>(null);
   const [settingsRequested, setSettingsRequested] = useState(false);
+  const [ticketPatches, setTicketPatches] = useState<
+    Record<string, Partial<TicketDTO>>
+  >({});
+
+  const displayTickets = useMemo(
+    () =>
+      tickets.map((ticket) => ({
+        ...ticket,
+        ...ticketPatches[ticket.id],
+      })),
+    [tickets, ticketPatches]
+  );
+
+  const handleTicketPatch = useCallback(
+    (ticketId: string, patch: Partial<TicketDTO>) => {
+      setTicketPatches((current) => ({
+        ...current,
+        [ticketId]: { ...current[ticketId], ...patch },
+      }));
+    },
+    []
+  );
 
   const view = parseView(searchParams.get("view"));
   const statusFilter = parseStatusFilter(searchParams.get("status"));
@@ -263,7 +285,7 @@ export function ProjectPageClient({
     return <ForbiddenState />;
   }
 
-  const filteredTickets = tickets.filter((ticket) => {
+  const filteredTickets = displayTickets.filter((ticket) => {
     if (statusFilter !== "all" && ticket.status !== statusFilter) return false;
     if (
       assigneeFilter !== "all" &&
@@ -503,11 +525,12 @@ export function ProjectPageClient({
       )}
 
       <TicketPeek
-        tickets={tickets}
+        tickets={displayTickets}
         tags={tags}
         notes={notes}
         members={members}
         project={project}
+        onTicketPatch={handleTicketPatch}
       />
 
       <Sheet open={showSettings} onOpenChange={handleSettingsOpenChange}>

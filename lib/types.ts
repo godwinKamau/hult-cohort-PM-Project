@@ -103,6 +103,7 @@ export interface TicketDTO {
   position: number;
   assigneeClerkId?: string;
   tagIds: string[];
+  color?: string;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -114,6 +115,8 @@ export interface NoteDTO {
   ticketId: string;
   authorClerkId: string;
   body: string;
+  format: "text" | "html";
+  highlighted: boolean;
   createdAt: string;
   updatedAt: string;
 }

@@ -6,6 +6,8 @@ const NoteSchema = new Schema(
     ticketId: { type: Schema.Types.ObjectId, ref: "Ticket", required: true },
     authorClerkId: { type: String, required: true },
     body: { type: String, required: true },
+    format: { type: String, enum: ["text", "html"], default: "text" },
+    highlighted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

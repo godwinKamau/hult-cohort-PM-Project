@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { isValidAvatarColor } from "@/lib/avatar";
 import { isOrgMember, requireOrg, requireProjectMembership } from "@/lib/auth";
 import * as ticketRepo from "@/repositories/tickets";
 import type { TicketDTO, TicketStatus } from "@/lib/types";
@@ -40,11 +41,16 @@ export async function updateTicketAction(
     description: string;
     assigneeClerkId: string | null;
     tagIds: string[];
+    color: string;
   }>
 ): Promise<{ success: boolean; ticket?: TicketDTO; error?: string }> {
   try {
     const { orgId, userId } = await requireOrg();
     await requireProjectMembership(orgId, projectId, userId);
+
+    if (data.color !== undefined && data.color !== "" && !isValidAvatarColor(data.color)) {
+      return { success: false, error: "Invalid ticket color" };
+    }
 
     if (data.assigneeClerkId) {
       const member = await isOrgMember(orgId, data.assigneeClerkId);

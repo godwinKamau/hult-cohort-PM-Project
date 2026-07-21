@@ -12,6 +12,7 @@ import {
 import { TagBadge } from "./TagBadge";
 import { QuickTicketCreate } from "./QuickTicketCreate";
 import { TicketStatusSelect } from "./TicketStatusSelect";
+import { TicketStatusNav } from "./TicketStatusNav";
 import { MemberAvatar } from "./MemberAvatar";
 import { cn } from "@/lib/cn";
 
@@ -163,18 +164,42 @@ export function TicketListView({
                         )}
                       </button>
 
-                      <div className="min-w-0 justify-self-start">
+                      <div className="min-w-0 justify-self-start flex items-center gap-0.5">
                         {onStatusChange ? (
-                          <TicketStatusSelect
-                            compact
-                            value={ticket.status}
-                            disabled={statusChangingId === ticket.id}
-                            onChange={(nextStatus) => {
-                              if (nextStatus !== ticket.status) {
-                                void onStatusChange(ticket.id, nextStatus);
-                              }
-                            }}
-                          />
+                          <>
+                            <TicketStatusNav
+                              compact
+                              side="prev"
+                              value={ticket.status}
+                              disabled={statusChangingId === ticket.id}
+                              onChange={(nextStatus) => {
+                                if (nextStatus !== ticket.status) {
+                                  void onStatusChange(ticket.id, nextStatus);
+                                }
+                              }}
+                            />
+                            <TicketStatusSelect
+                              compact
+                              value={ticket.status}
+                              disabled={statusChangingId === ticket.id}
+                              onChange={(nextStatus) => {
+                                if (nextStatus !== ticket.status) {
+                                  void onStatusChange(ticket.id, nextStatus);
+                                }
+                              }}
+                            />
+                            <TicketStatusNav
+                              compact
+                              side="next"
+                              value={ticket.status}
+                              disabled={statusChangingId === ticket.id}
+                              onChange={(nextStatus) => {
+                                if (nextStatus !== ticket.status) {
+                                  void onStatusChange(ticket.id, nextStatus);
+                                }
+                              }}
+                            />
+                          </>
                         ) : (
                           <span className="font-mono text-xs text-muted-foreground">
                             {STATUS_LABELS[ticket.status]}

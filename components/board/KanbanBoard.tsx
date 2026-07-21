@@ -77,7 +77,7 @@ export function KanbanBoard({
   const ticketKey = useMemo(
     () =>
       initialTickets
-        .map((t) => `${t.id}:${t.number}:${t.status}:${t.position}`)
+        .map((t) => `${t.id}:${t.number}:${t.status}:${t.position}:${t.color ?? ""}`)
         .join("|"),
     [initialTickets]
   );
