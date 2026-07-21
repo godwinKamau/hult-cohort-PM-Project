@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,7 @@ import type {
   ProjectDTO,
   TicketStatus,
 } from "@/lib/types";
+import { TAG_COLORS } from "@/lib/types";
 import { formatTicketNumber } from "@/lib/ticketNumber";
 import { STATUS_LABELS } from "@/lib/ticketStatus";
 import {
@@ -34,9 +35,11 @@ import {
 } from "@/actions/tickets";
 import { useTerminalToast } from "@/components/ui/terminal-toast";
 import { TicketStatusSelect } from "@/components/board/TicketStatusSelect";
+import { TicketStatusNav } from "@/components/board/TicketStatusNav";
 import { TagPicker } from "./TagPicker";
 import { NotesThread } from "./NotesThread";
 import { cn } from "@/lib/cn";
+import { getTicketColorScopeStyle, getTicketPeekAccentStyle } from "@/lib/ticketColor";
 import { Button } from "@/components/ui/button";
 
 interface TicketPeekContentProps {
@@ -45,6 +48,7 @@ interface TicketPeekContentProps {
   notes: NoteDTO[];
   members: OrgMemberDTO[];
   project: ProjectDTO;
+  onTicketPatch?: (ticketId: string, patch: Partial<TicketDTO>) => void;
 }
 
 type SaveState = "idle" | "saving" | "saved" | "error";
@@ -59,6 +63,7 @@ export function TicketPeekContent({
   notes,
   members,
   project,
+  onTicketPatch,
 }: TicketPeekContentProps) {
   const router = useRouter();
   const { showToast } = useTerminalToast();
@@ -66,6 +71,7 @@ export function TicketPeekContent({
   const [description, setDescription] = useState(ticket.description);
   const [assignee, setAssignee] = useState(ticket.assigneeClerkId ?? "");
   const [selectedTags, setSelectedTags] = useState(ticket.tagIds);
+  const [ticketColor, setTicketColor] = useState(ticket.color ?? "");
   const [status, setStatus] = useState<TicketStatus>(ticket.status);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
@@ -74,6 +80,10 @@ export function TicketPeekContent({
   const [lastFailedData, setLastFailedData] = useState<
     Parameters<typeof updateTicketAction>[2] | null
   >(null);
+  const peekColorScopeStyle = useMemo(
+    () => getTicketColorScopeStyle(ticketColor || undefined),
+    [ticketColor]
+  );
 
   const saveField = useCallback(
     async (data: Parameters<typeof updateTicketAction>[2]) => {
@@ -162,6 +172,17 @@ export function TicketPeekContent({
     }
   };
 
+  const handleColorChange = async (color: string) => {
+    const previous = ticketColor;
+    setTicketColor(color);
+    onTicketPatch?.(ticket.id, { color });
+    const ok = await saveField({ color });
+    if (!ok) {
+      setTicketColor(previous);
+      onTicketPatch?.(ticket.id, { color: previous });
+    }
+  };
+
   const handleStatusChange = async (nextStatus: TicketStatus) => {
     if (nextStatus === status) return;
 
@@ -196,9 +217,12 @@ export function TicketPeekContent({
   const ticketNotes = notes.filter((n) => n.ticketId === ticket.id);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div
+      className="flex min-h-0 flex-1 flex-col"
+      style={peekColorScopeStyle}
+    >
       <SheetHeader className="shrink-0 space-y-2 text-left">
-        <SheetDescription className="font-mono text-[10px] uppercase tracking-wide">
+        <SheetDescription className="font-mono text-[10px] uppercase tracking-wide text-primary">
           ticket.peek() · {formatTicketNumber(ticket.number)} ·{" "}
           {STATUS_LABELS[status]}
         </SheetDescription>
@@ -243,7 +267,10 @@ export function TicketPeekContent({
           </div>
         )}
 
-        <div className="group/desc relative rounded-md border border-primary/30 bg-accent px-4 py-3 shadow-[0_0_16px_rgba(0,255,65,0.08)]">
+        <div
+          className="group/desc relative rounded-md border border-primary/30 bg-accent px-4 py-3"
+          style={getTicketPeekAccentStyle(ticketColor || undefined)}
+        >
           {isEditingDescription ? (
             <Textarea
               id="description"
@@ -265,7 +292,7 @@ export function TicketPeekContent({
               className={cn(
                 "min-h-[88px] resize-none border-primary/25 bg-black-light/50",
                 "font-mono text-sm leading-relaxed text-primary",
-                "placeholder:text-green-dark/70 focus-visible:ring-primary/40"
+                "placeholder:text-primary/50 focus-visible:ring-primary/40"
               )}
             />
           ) : (
@@ -274,7 +301,7 @@ export function TicketPeekContent({
                 {description.trim() ? (
                   description
                 ) : (
-                  <span className="text-green-dark italic">
+                  <span className="text-primary/60 italic">
                     No description yet.
                   </span>
                 )}
@@ -284,7 +311,7 @@ export function TicketPeekContent({
                 variant="ghost"
                 size="icon"
                 className={cn(
-                  "absolute right-2 top-2 h-7 w-7 text-green-dark",
+                  "absolute right-2 top-2 h-7 w-7 text-primary/70",
                   "opacity-0 transition-opacity hover:bg-primary/10 hover:text-primary",
                   "group-hover/desc:opacity-100 focus-visible:opacity-100"
                 )}
@@ -305,11 +332,23 @@ export function TicketPeekContent({
             >
               --status
             </Label>
+            <TicketStatusNav
+              side="prev"
+              value={status}
+              disabled={saveState === "saving"}
+              onChange={(nextStatus) => void handleStatusChange(nextStatus)}
+            />
             <TicketStatusSelect
               value={status}
               disabled={saveState === "saving"}
               onChange={(nextStatus) => void handleStatusChange(nextStatus)}
               className="min-w-0 flex-1 [&_button]:h-8 [&_button]:w-full"
+            />
+            <TicketStatusNav
+              side="next"
+              value={status}
+              disabled={saveState === "saving"}
+              onChange={(nextStatus) => void handleStatusChange(nextStatus)}
             />
           </div>
           <div className="flex items-center gap-3">
@@ -344,8 +383,44 @@ export function TicketPeekContent({
           <TagPicker
             tags={tags}
             selectedTagIds={selectedTags}
+            projectId={project.id}
             onChange={(tagIds) => void handleTagsChange(tagIds)}
           />
+          <div className="flex items-center gap-3">
+            <Label className="w-24 shrink-0">--color</Label>
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+              <button
+                type="button"
+                aria-label="Use default theme color"
+                aria-pressed={!ticketColor}
+                onClick={() => void handleColorChange("")}
+                className={cn(
+                  "h-7 rounded border px-2 font-mono text-[10px] transition-colors",
+                  !ticketColor
+                    ? "border-primary bg-primary/15 text-primary"
+                    : "border-primary/20 text-muted-foreground hover:border-primary/40"
+                )}
+              >
+                default
+              </button>
+              {TAG_COLORS.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  aria-label={`Set ticket color ${color}`}
+                  aria-pressed={ticketColor === color}
+                  onClick={() => void handleColorChange(color)}
+                  className={cn(
+                    "h-7 w-7 rounded border-2 transition-all",
+                    ticketColor === color
+                      ? "scale-110 border-primary"
+                      : "border-primary/20 hover:border-primary/50"
+                  )}
+                  style={{ backgroundColor: color }}
+                />
+              ))}
+            </div>
+          </div>
         </div>
 
         <div
@@ -355,7 +430,7 @@ export function TicketPeekContent({
             saveState === "error"
               ? "text-destructive"
               : saveState === "saved"
-                ? "text-green-dark"
+                ? "text-primary"
                 : "text-muted-foreground"
           )}
         >
@@ -378,6 +453,7 @@ export function TicketPeekContent({
         members={members}
         ticketId={ticket.id}
         projectId={project.id}
+        accentColor={ticketColor || undefined}
       />
     </div>
   );

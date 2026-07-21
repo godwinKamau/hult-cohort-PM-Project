@@ -1,27 +1,37 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { X } from "lucide-react";
 import type { TagDTO } from "@/lib/types";
 import { TAG_COLORS } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TagBadge } from "@/components/board/TagBadge";
-import { createTagAction } from "@/actions/tags";
+import { createTagAction, deleteTagAction } from "@/actions/tags";
 import { cn } from "@/lib/cn";
 
 interface TagPickerProps {
   tags: TagDTO[];
   selectedTagIds: string[];
+  projectId: string;
   onChange: (tagIds: string[]) => void;
 }
 
-export function TagPicker({ tags, selectedTagIds, onChange }: TagPickerProps) {
+export function TagPicker({
+  tags,
+  selectedTagIds,
+  projectId,
+  onChange,
+}: TagPickerProps) {
+  const router = useRouter();
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState<string>(TAG_COLORS[0]);
   const [localTags, setLocalTags] = useState(tags);
   const [showCreate, setShowCreate] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [deletingTagId, setDeletingTagId] = useState<string | null>(null);
 
   useEffect(() => {
     setLocalTags(tags);
@@ -58,21 +68,50 @@ export function TagPicker({ tags, selectedTagIds, onChange }: TagPickerProps) {
     }
   };
 
+  const handleDeleteTag = async (tag: TagDTO) => {
+    if (deletingTagId) return;
+
+    setDeletingTagId(tag.id);
+    const result = await deleteTagAction(tag.id, projectId);
+    setDeletingTagId(null);
+
+    if (result.success) {
+      setLocalTags((prev) => prev.filter((item) => item.id !== tag.id));
+      onChange(selectedTagIds.filter((id) => id !== tag.id));
+      router.refresh();
+    }
+  };
+
   return (
     <div className="grid grid-cols-[6rem_minmax(0,1fr)] items-start gap-x-3 gap-y-2">
       <Label className="w-24 shrink-0 pt-1.5">--tags</Label>
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         {localTags.map((tag) => (
-          <button key={tag.id} type="button" onClick={() => toggleTag(tag.id)}>
-            <TagBadge
-              tag={tag}
-              className={
-                selectedTagIds.includes(tag.id)
-                  ? "ring-1 ring-primary"
-                  : "opacity-50"
-              }
-            />
-          </button>
+          <span key={tag.id} className="group/tag inline-flex items-center">
+            <button type="button" onClick={() => toggleTag(tag.id)}>
+              <TagBadge
+                tag={tag}
+                className={
+                  selectedTagIds.includes(tag.id)
+                    ? "ring-1 ring-primary"
+                    : "opacity-50"
+                }
+              />
+            </button>
+            <button
+              type="button"
+              aria-label={`Delete tag ${tag.name}`}
+              disabled={deletingTagId === tag.id}
+              onClick={() => void handleDeleteTag(tag)}
+              className={cn(
+                "ml-0.5 inline-flex h-4 w-4 items-center justify-center rounded",
+                "text-muted-foreground opacity-0 transition-opacity hover:text-destructive",
+                "group-hover/tag:opacity-100 focus-visible:opacity-100"
+              )}
+            >
+              <X className="h-3 w-3" aria-hidden />
+            </button>
+          </span>
         ))}
         {localTags.length === 0 && (
           <span className="font-mono text-xs text-muted-foreground">none</span>

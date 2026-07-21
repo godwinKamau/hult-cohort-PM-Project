@@ -18,7 +18,8 @@ export async function addNote(
   orgId: string,
   userId: string,
   ticketId: string,
-  body: string
+  body: string,
+  format: "text" | "html" = "text"
 ): Promise<NoteDTO> {
   await connectDB();
   const doc = await Note.create({
@@ -26,6 +27,21 @@ export async function addNote(
     ticketId,
     authorClerkId: userId,
     body,
+    format,
   });
   return serializeDoc<NoteDTO>(doc.toObject())!;
+}
+
+export async function setNoteHighlight(
+  orgId: string,
+  noteId: string,
+  highlighted: boolean
+): Promise<NoteDTO | null> {
+  await connectDB();
+  const doc = await Note.findOneAndUpdate(
+    { _id: noteId, organizationId: orgId },
+    { $set: { highlighted } },
+    { returnDocument: "after" }
+  ).lean();
+  return serializeDoc<NoteDTO>(doc);
 }

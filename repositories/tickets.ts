@@ -103,6 +103,7 @@ export async function updateTicket(
     position: number;
     assigneeClerkId: string | null;
     tagIds: string[];
+    color: string;
   }>
 ): Promise<TicketDTO | null> {
   await connectDB();

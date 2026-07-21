@@ -15,6 +15,7 @@ const TicketSchema = new Schema(
     position: { type: Number, default: 0 },
     assigneeClerkId: { type: String },
     tagIds: [{ type: Schema.Types.ObjectId, ref: "Tag" }],
+    color: { type: String, default: "" },
     createdBy: { type: String, required: true },
   },
   { timestamps: true }
